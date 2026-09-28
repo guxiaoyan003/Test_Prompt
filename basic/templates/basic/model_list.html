@@ -1,0 +1,1352 @@
+{% extends 'basic/base.html' %}
+
+{% block title %}模型列表 · Test_Prompt{% endblock %}
+
+{% block page_style %}
+<style>
+  :root{
+    --bg:#060a12;
+    --panel:rgba(13,21,36,.86);
+    --line:#1c2a44;
+    --line-soft:rgba(120,160,220,.12);
+    --text:#e6f1ff;
+    --text-dim:#9db0d4;
+    --muted:#6f83a8;
+    --cyan:#22d3ee;
+    --blue:#3b82f6;
+    --violet:#8b5cf6;
+    --danger:#ef4444;
+    --ok:#34d399;
+    --radius:14px;
+    --shadow:0 18px 48px rgba(2,8,20,.55);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    color:var(--text);
+    background:
+      radial-gradient(1100px 620px at 12% -10%, rgba(34,211,238,.16), transparent 60%),
+      radial-gradient(900px 560px at 96% 4%, rgba(139,92,246,.16), transparent 62%),
+      radial-gradient(700px 700px at 60% 120%, rgba(59,130,246,.12), transparent 60%),
+      var(--bg);
+    font-family:"Segoe UI","Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif;
+    font-size:14px;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(120,170,255,.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,170,255,.055) 1px, transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(circle at 50% 22%, #000 30%, transparent 88%);
+    mask-image:radial-gradient(circle at 50% 22%, #000 30%, transparent 88%);
+  }
+
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;}
+
+  /* ============ 布局 ============ */
+  .app{position:relative;z-index:1;display:flex;height:100vh;overflow:hidden;}
+
+  /* ============ 左侧菜单 ============ */
+  .sidebar{
+    width:252px;flex:0 0 252px;display:flex;flex-direction:column;
+    background:linear-gradient(180deg, rgba(11,18,32,.96), rgba(6,10,18,.96));
+    border-right:1px solid var(--line);
+    backdrop-filter:blur(6px);
+  }
+  .brand{
+    display:flex;align-items:center;gap:11px;
+    padding:17px 18px;border-bottom:1px solid var(--line);
+  }
+  .brand .logo{
+    width:38px;height:38px;border-radius:11px;flex:0 0 38px;
+    display:grid;place-items:center;
+    background:linear-gradient(140deg, rgba(34,211,238,.95), rgba(59,130,246,.9) 55%, rgba(139,92,246,.92));
+    box-shadow:0 0 0 1px rgba(140,220,255,.35), 0 8px 22px rgba(34,211,238,.35);
+  }
+  .brand .logo svg{width:21px;height:21px;stroke:#04121f;}
+  .brand .title{
+    font-size:17px;font-weight:700;letter-spacing:.4px;
+    background:linear-gradient(90deg,#e8f7ff,#67e8f9 60%,#a78bfa);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .brand .sub{font-size:11px;color:var(--muted);letter-spacing:1.1px;text-transform:uppercase;margin-top:2px;}
+
+  .nav{flex:1;overflow:auto;padding:12px 10px 22px;}
+  .nav::-webkit-scrollbar{width:8px;}
+  .nav::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:8px;}
+
+  .nav-label{
+    font-size:11px;letter-spacing:1.6px;color:var(--muted);
+    text-transform:uppercase;padding:10px 12px 8px;
+  }
+
+  .m1{margin-bottom:4px;}
+  .m1 > .m1-head,
+  .m2 > .m2-head{
+    display:flex;align-items:center;gap:10px;width:100%;
+    background:transparent;border:0;color:var(--text-dim);
+    padding:10px 12px;border-radius:10px;cursor:pointer;
+    font-size:13.5px;text-align:left;transition:.18s;
+  }
+  .m1 > .m1-head:hover,
+  .m2 > .m2-head:hover{background:rgba(120,170,255,.07);color:#dceaff;}
+  .m1 > .m1-head .ico{width:16px;height:16px;opacity:.85;}
+  .m2 > .m2-head .ico{width:14px;height:14px;opacity:.7;}
+  .m1 > .m1-head .txt,.m2 > .m2-head .txt{flex:1;}
+  .chev{width:14px;height:14px;transition:transform .2s;}
+  .open > .m1-head .chev,.open > .m2-head .chev{transform:rotate(90deg);}
+
+  .m2-wrap,.m3-wrap{display:none;}
+  .open > .m2-wrap{display:block;}
+  .m2.open > .m3-wrap{display:block;}
+
+  .m2{margin:2px 0 2px 6px;}
+  .m2 > .m2-head{padding:9px 12px;font-size:13px;}
+
+  .m3{margin:1px 0 1px 10px;border-left:1px solid var(--line);padding-left:6px;}
+  .m3 a{
+    display:flex;align-items:center;gap:9px;
+    padding:8px 12px;border-radius:9px;color:var(--muted);font-size:12.5px;
+    transition:.18s;position:relative;
+  }
+  .m3 a .dot{width:5px;height:5px;border-radius:50%;background:#2b3d5c;transition:.18s;}
+  .m3 a:hover{color:#dceaff;background:rgba(120,170,255,.07);}
+  .m3 a:hover .dot{background:#5f7ea8;}
+  .m3 a.active{
+    color:#eafcff;background:linear-gradient(90deg, rgba(34,211,238,.16), rgba(34,211,238,.02));
+    box-shadow:inset 0 0 0 1px rgba(34,211,238,.28);
+  }
+  .m3 a.active .dot{background:var(--cyan);box-shadow:0 0 9px var(--cyan);}
+  .m3 a.active::before{
+    content:"";position:absolute;left:-7px;top:50%;transform:translateY(-50%);
+    width:2px;height:16px;background:var(--cyan);border-radius:2px;box-shadow:0 0 10px var(--cyan);
+  }
+  /* ============ 右侧主区 ============ */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+
+  .topbar{
+    height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(13,21,36,.75), rgba(13,21,36,.25));
+    backdrop-filter:blur(8px);
+  }
+  .crumbs{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+  .crumbs .sep{opacity:.45;}
+  .crumbs .cur{color:#e8f7ff;font-weight:600;}
+  .topbar .right{display:flex;align-items:center;gap:14px;}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#b8e9f5;
+    padding:6px 12px;border-radius:999px;background:rgba(34,211,238,.08);
+    border:1px solid rgba(34,211,238,.28);
+  }
+  .pulse{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .avatar{
+    width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;
+    color:#04121f;background:linear-gradient(135deg,#67e8f9,#818cf8);
+  }
+
+  .content{flex:1;overflow:auto;padding:20px 22px 26px;}
+  .content::-webkit-scrollbar{width:10px;}
+  .content::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:10px;}
+
+  .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:16px;}
+  .hero h1{margin:0;font-size:20px;letter-spacing:.5px;}
+  .hero h1 span{
+    background:linear-gradient(90deg,#eafcff,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero p{margin:7px 0 0;font-size:12.5px;color:var(--muted);}
+  .hero .glow-line{
+    height:2px;width:120px;margin-top:12px;border-radius:2px;
+    background:linear-gradient(90deg,var(--cyan),rgba(139,92,246,0));
+    box-shadow:0 0 14px rgba(34,211,238,.7);
+  }
+
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);overflow:hidden;
+  }
+  .panel::before{
+    content:"";display:block;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(34,211,238,.55),rgba(139,92,246,.45),transparent);
+  }
+
+  /* 搜索 + 操作区 */
+  .toolbar{
+    display:flex;flex-direction:column;gap:14px;
+    padding:14px 18px 16px;border-bottom:1px solid var(--line-soft);
+    background:linear-gradient(180deg, rgba(255,255,255,.02), transparent);
+  }
+  .toolbar-head{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;}
+  .toolbar-head .tip{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);}
+  .toolbar-head .tip svg{width:14px;height:14px;opacity:.7;flex:0 0 14px;}
+
+  .filters{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field > label{font-size:12px;color:var(--muted);letter-spacing:.3px;}
+  .input{
+    width:212px;height:38px;padding:0 13px;border-radius:9px;
+    background:#0a1322;border:1px solid #21354f;color:var(--text);font-size:13px;
+    transition:.18s;outline:none;
+  }
+  .input::placeholder{color:#4d6187;}
+  .input:focus{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.13);background:#0b1626;}
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+
+  /* 可编辑下拉框 */
+  .combo{position:relative;width:212px;}
+  .combo .input{width:100%;padding-right:40px;}
+  .combo-btn{
+    position:absolute;right:1px;top:1px;width:38px;height:36px;border:0;border-radius:0 8px 8px 0;
+    background:transparent;color:#7d94bb;cursor:pointer;display:grid;place-items:center;transition:.16s;
+  }
+  .combo-btn:hover{color:#eafcff;background:rgba(34,211,238,.09);}
+  .combo-btn svg{width:14px;height:14px;transition:transform .2s;}
+  .combo.open .combo-btn svg{transform:rotate(180deg);}
+  .combo-list{
+    position:absolute;z-index:20;left:0;right:0;top:calc(100% + 6px);
+    padding:6px;display:none;max-height:238px;overflow:auto;
+    background:linear-gradient(180deg,#0e1a2c,#0b1424);
+    border:1px solid #22385a;border-radius:10px;
+    box-shadow:0 22px 50px rgba(0,0,0,.62), 0 0 0 1px rgba(34,211,238,.06) inset;
+    animation:pop .14s ease-out;
+  }
+  .combo.open .combo-list{display:block;}
+  .combo-list::-webkit-scrollbar{width:8px;}
+  .combo-list::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:8px;}
+  .combo-item{
+    display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;
+    font-size:13px;color:var(--text-dim);cursor:pointer;transition:.14s;
+  }
+  .combo-item:hover,.combo-item.on{background:rgba(34,211,238,.1);color:#eafcff;}
+  .combo-item .tag{
+    margin-left:auto;font-size:10.5px;color:#7fd6e8;padding:1px 7px;border-radius:999px;
+    border:1px solid rgba(34,211,238,.3);background:rgba(34,211,238,.07);
+  }
+  .combo-item mark{background:transparent;color:#67e8f9;font-weight:700;}
+  .combo-empty{padding:11px 10px;font-size:12.5px;color:var(--muted);}
+
+  /* 费用区间 */
+  .range{display:flex;align-items:center;gap:7px;}
+  .range .input{width:92px;padding:0 10px;text-align:center;}
+  .range .tilde{color:#4d6187;font-size:12px;}
+  .range .unit{font-size:11.5px;color:var(--muted);white-space:nowrap;}
+  .btn{
+    height:38px;padding:0 16px;border-radius:9px;font-size:13px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;justify-content:center;
+    border:1px solid transparent;transition:.18s;white-space:nowrap;
+  }
+  .btn svg{width:15px;height:15px;flex:0 0 15px;}
+  .btn-primary{
+    background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#03131f;font-weight:700;
+    box-shadow:0 8px 22px rgba(34,211,238,.28);
+  }
+  .btn-primary:hover{filter:brightness(1.08);box-shadow:0 10px 26px rgba(34,211,238,.4);}
+  .btn-ghost{background:#101c2e;border-color:#23385a;color:#cfe2ff;}
+  .btn-ghost:hover{border-color:rgba(34,211,238,.6);color:#eafcff;background:#122238;}
+  .btn-ghost:disabled{opacity:.4;cursor:not-allowed;border-color:#243447;color:#7d8ba3;background:#101c2e;}
+  .btn-danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.5);color:#ffb4b4;}
+  .btn-danger:hover:not(:disabled){background:rgba(239,68,68,.22);color:#fff;box-shadow:0 8px 20px rgba(239,68,68,.25);}
+  .btn-danger:disabled{
+    opacity:.4;cursor:not-allowed;background:rgba(255,255,255,.03);
+    border-color:#243447;color:#7d8ba3;box-shadow:none;
+  }
+  .actions{display:flex;align-items:center;gap:10px;}
+
+  /* 表格 */
+  .table-wrap{overflow:auto;}
+  .table-wrap::-webkit-scrollbar{height:10px;width:10px;}
+  .table-wrap::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:10px;}
+  table{width:100%;border-collapse:collapse;min-width:980px;}
+  thead th{
+    position:sticky;top:0;z-index:2;
+    text-align:left;font-size:12px;font-weight:600;letter-spacing:.8px;color:#8ea3c8;
+    padding:12px 16px;background:#0c1626;border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  thead th small{display:block;margin-top:3px;font-size:10.5px;font-weight:400;letter-spacing:.2px;color:#5c7291;}
+  tbody td{
+    padding:14px 16px;font-size:13.5px;border-bottom:1px solid rgba(120,160,220,.09);
+    color:var(--text-dim);vertical-align:middle;
+  }
+  tbody tr{transition:.15s;}
+  tbody tr:hover{background:rgba(34,211,238,.045);}
+  tbody tr.checked{background:rgba(34,211,238,.07);}
+  tbody tr:last-child td{border-bottom:0;}
+  .col-check{width:52px;}
+  .col-platform{width:19%;}
+  .col-model{width:27%;}
+  .col-type{width:12%;}
+  .col-cost{width:14%;}
+
+  input[type="checkbox"]{
+    width:16px;height:16px;accent-color:#22d3ee;cursor:pointer;
+    vertical-align:middle;filter:drop-shadow(0 0 5px rgba(34,211,238,.35));
+  }
+  .lnk{
+    color:#67e8f9;font-weight:600;position:relative;
+    border-bottom:1px dashed rgba(103,232,249,.45);padding-bottom:1px;transition:.18s;
+  }
+  .lnk:hover{color:#c8f8ff;border-bottom-color:#67e8f9;text-shadow:0 0 12px rgba(34,211,238,.6);}
+  .lnk .ext{opacity:.5;font-size:11px;margin-left:3px;}
+  .lnk.model{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:12.8px;font-weight:600;}
+  .lnk.off{color:var(--text-dim);border-bottom-color:rgba(120,160,220,.28);cursor:default;}
+  .lnk.off:hover{color:var(--text-dim);border-bottom-color:rgba(120,160,220,.28);text-shadow:none;}
+  .badge{
+    display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;margin-left:8px;
+    color:#a5f3fc;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.28);vertical-align:middle;
+  }
+  .badge.free{color:#a7f3d0;background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3);}
+  .type{
+    display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 10px;border-radius:999px;
+    border:1px solid #2a3d5c;background:rgba(120,160,220,.07);color:#a9bfe2;white-space:nowrap;
+  }
+  .type::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;}
+  .type[data-type="对话"]{color:#7dd3fc;border-color:rgba(125,211,252,.35);background:rgba(125,211,252,.09);}
+  .type[data-type="推理"]{color:#c4b5fd;border-color:rgba(196,181,253,.35);background:rgba(196,181,253,.1);}
+  .type[data-type="多模态"]{color:#67e8f9;border-color:rgba(103,232,249,.35);background:rgba(103,232,249,.09);}
+  .type[data-type="文本生成"]{color:#93c5fd;border-color:rgba(147,197,253,.35);background:rgba(147,197,253,.09);}
+  .type[data-type="嵌入"]{color:#6ee7b7;border-color:rgba(110,231,183,.35);background:rgba(110,231,183,.09);}
+  .type[data-type="重排序"]{color:#fcd34d;border-color:rgba(252,211,77,.35);background:rgba(252,211,77,.09);}
+  .type[data-type="图像生成"]{color:#f9a8d4;border-color:rgba(249,168,212,.35);background:rgba(249,168,212,.09);}
+  .type[data-type="语音合成"]{color:#fdba74;border-color:rgba(253,186,116,.35);background:rgba(253,186,116,.09);}
+  .type[data-type="语音识别"]{color:#a5b4fc;border-color:rgba(165,180,252,.35);background:rgba(165,180,252,.09);}
+  .cost{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:12.8px;color:#a7f3d0;white-space:nowrap;}
+  .cost .cur{color:#6f83a8;margin-right:1px;}
+  .cost.zero{color:#758aa9;}
+  .empty{display:none;padding:56px 20px;text-align:center;color:var(--muted);}
+  .empty svg{width:44px;height:44px;opacity:.5;margin-bottom:12px;}
+  .empty p{margin:0;font-size:13px;}
+
+  /* 底部状态栏 */
+  .panel-foot{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:12px 18px;border-top:1px solid var(--line-soft);background:rgba(255,255,255,.015);
+    font-size:12.5px;color:var(--muted);
+  }
+  .panel-foot b{color:#8ff0ff;font-weight:600;}
+  .pager{display:flex;align-items:center;gap:6px;}
+  .pager button{
+    min-width:30px;height:30px;padding:0 9px;border-radius:8px;cursor:pointer;font-size:12.5px;
+    background:#0f1c2e;border:1px solid #22375a;color:#a9bfe2;transition:.16s;
+  }
+  .pager button:hover:not(:disabled){border-color:rgba(34,211,238,.6);color:#eafcff;}
+  .pager button.on{background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#03131f;font-weight:700;border-color:transparent;}
+  .pager button:disabled{opacity:.35;cursor:not-allowed;}
+
+  /* ============ 确认弹窗 ============ */
+  .modal-mask{
+    position:fixed;inset:0;z-index:50;display:none;place-items:center;
+    background:rgba(3,7,14,.72);backdrop-filter:blur(5px);
+  }
+  .modal-mask.show{display:grid;}
+  .modal{
+    width:min(430px,92vw);border-radius:16px;padding:22px 24px 20px;
+    background:linear-gradient(180deg,#101c30,#0b1424);
+    border:1px solid rgba(239,68,68,.35);
+    box-shadow:0 26px 70px rgba(0,0,0,.65), 0 0 0 1px rgba(34,211,238,.08) inset;
+    animation:pop .18s ease-out;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+  .modal h3{margin:0 0 10px;font-size:16px;display:flex;align-items:center;gap:10px;}
+  .modal h3 .warn{
+    width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex:0 0 32px;
+    background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.4);color:#fca5a5;
+  }
+  .modal h3 .warn svg{width:17px;height:17px;}
+  .modal p{margin:0;font-size:13px;line-height:1.7;color:#a9bfe2;}
+  .modal .target{
+    margin:12px 0 4px;padding:10px 12px;border-radius:9px;font-size:12.5px;color:#bff3ff;
+    background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.22);
+    max-height:120px;overflow:auto;
+  }
+  .modal .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+
+  /* ============ 编辑弹窗（字段与「添加模型」一致） ============ */
+  .modal.form{width:min(680px,94vw);max-height:88vh;overflow:auto;border-color:rgba(34,211,238,.32);}
+  .modal h3 .info{
+    width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex:0 0 32px;
+    background:rgba(34,211,238,.13);border:1px solid rgba(34,211,238,.38);color:#67e8f9;
+  }
+  .modal h3 .info svg{width:17px;height:17px;}
+  .modal .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px;}
+  .modal .form-grid .span-2{grid-column:1 / -1;}
+  .modal .input{width:100%;}
+  .modal .input.mono{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:12.5px;}
+  .modal .input.num{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:13px;letter-spacing:.3px;}
+  .modal .req{color:#f87171;font-style:normal;margin-left:3px;}
+  .modal .field .hint{margin-top:7px;font-size:11.5px;color:var(--muted);line-height:1.55;}
+  .modal .field .err{display:none;margin-top:7px;font-size:11.5px;color:#fca5a5;}
+  .modal .field.invalid .err{display:block;}
+  .modal .field.invalid .hint{display:none;}
+  .modal .field.invalid > .input,
+  .modal .field.invalid .select-wrap .select,
+  .modal .field.invalid .ms .ms-box{border-color:rgba(239,68,68,.7);box-shadow:0 0 0 3px rgba(239,68,68,.12);}
+
+  /* 下拉列表框（服务器 / 单位） */
+  .modal .select-wrap{position:relative;}
+  .modal .select{
+    width:100%;height:38px;padding:0 40px 0 13px;border-radius:9px;cursor:pointer;
+    background:#0a1322;border:1px solid #21354f;color:var(--text);font-size:13px;
+    outline:none;transition:.18s;
+    -webkit-appearance:none;-moz-appearance:none;appearance:none;
+  }
+  .modal .select:focus{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.13);background:#0b1626;}
+  .modal .select option{background:#0b1424;color:#e6f1ff;}
+  .modal .select-wrap::after{
+    content:"";position:absolute;right:15px;top:50%;width:7px;height:7px;pointer-events:none;
+    border-right:2px solid #7d94bb;border-bottom:2px solid #7d94bb;
+    transform:translateY(-70%) rotate(45deg);
+  }
+
+  /* 类型：可多选的下拉列表框 */
+  .modal .ms{position:relative;}
+  .modal .ms-box{
+    display:flex;align-items:center;flex-wrap:wrap;gap:6px;
+    min-height:38px;padding:6px 40px 6px 10px;border-radius:9px;
+    background:#0a1322;border:1px solid #21354f;cursor:pointer;transition:.18s;
+  }
+  .modal .ms.open .ms-box{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.13);background:#0b1626;}
+  .modal .ms-ph{font-size:13px;color:#4d6187;padding-left:3px;}
+  .modal .ms-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .modal .ms-btn{
+    position:absolute;right:6px;top:50%;transform:translateY(-50%);
+    width:28px;height:28px;border:0;border-radius:8px;background:transparent;
+    color:#7d94bb;cursor:pointer;display:grid;place-items:center;transition:.16s;
+  }
+  .modal .ms-btn:hover{color:#eafcff;background:rgba(34,211,238,.09);}
+  .modal .ms-btn svg{width:14px;height:14px;transition:transform .2s;}
+  .modal .ms.open .ms-btn svg{transform:rotate(180deg);}
+  .modal .ms-list{
+    position:absolute;z-index:20;left:0;right:0;top:calc(100% + 6px);
+    padding:6px;display:none;max-height:236px;overflow:auto;
+    background:linear-gradient(180deg,#0e1a2c,#0b1424);
+    border:1px solid #22385a;border-radius:10px;
+    box-shadow:0 22px 50px rgba(0,0,0,.62), 0 0 0 1px rgba(34,211,238,.06) inset;
+    animation:pop .14s ease-out;
+  }
+  .modal .ms.open .ms-list{display:block;}
+  .modal .ms-list::-webkit-scrollbar{width:8px;}
+  .modal .ms-list::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:8px;}
+  .modal .ms-item{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
+    font-size:13px;color:var(--text-dim);cursor:pointer;transition:.14s;
+  }
+  .modal .ms-item:hover,.modal .ms-item.on{background:rgba(34,211,238,.1);}
+  .modal .ms-item input{width:15px;height:15px;accent-color:#22d3ee;cursor:pointer;margin:0;}
+  .modal .ms-foot{
+    display:flex;align-items:center;gap:8px;margin-top:5px;padding:9px 8px 3px;
+    border-top:1px solid var(--line-soft);
+  }
+  .modal .ms-mini{
+    height:26px;padding:0 11px;border-radius:7px;font-size:11.5px;cursor:pointer;transition:.16s;
+    background:#101c2e;border:1px solid #23385a;color:#bcd2f2;
+  }
+  .modal .ms-mini:hover{border-color:rgba(34,211,238,.6);color:#eafcff;}
+  .modal .ms-mini.sel{margin-left:auto;}
+  .modal .chip-type{
+    display:inline-flex;align-items:center;gap:7px;font-size:12px;padding:2px 7px 2px 10px;border-radius:999px;
+    border:1px solid #2a3d5c;background:rgba(120,160,220,.07);color:#a9bfe2;
+  }
+  .modal .chip-type i{font-style:normal;cursor:pointer;opacity:.55;font-size:13px;line-height:1;transition:.14s;}
+  .modal .chip-type i:hover{opacity:1;}
+  .modal .type[data-type="对话"],.modal .chip-type[data-type="对话"]{color:#7dd3fc;border-color:rgba(125,211,252,.35);background:rgba(125,211,252,.09);}
+  .modal .type[data-type="视频"],.modal .chip-type[data-type="视频"]{color:#f9a8d4;border-color:rgba(249,168,212,.35);background:rgba(249,168,212,.09);}
+  .modal .type[data-type="嵌入"],.modal .chip-type[data-type="嵌入"]{color:#6ee7b7;border-color:rgba(110,231,183,.35);background:rgba(110,231,183,.09);}
+  .modal .type[data-type="生图"],.modal .chip-type[data-type="生图"]{color:#fdba74;border-color:rgba(253,186,116,.35);background:rgba(253,186,116,.09);}
+  .modal .type[data-type="语音"],.modal .chip-type[data-type="语音"]{color:#a5b4fc;border-color:rgba(165,180,252,.35);background:rgba(165,180,252,.09);}
+  .modal .type[data-type="重排"],.modal .chip-type[data-type="重排"]{color:#fcd34d;border-color:rgba(252,211,77,.35);background:rgba(252,211,77,.09);}
+  @media (max-width:760px){.modal .form-grid{grid-template-columns:minmax(0,1fr);}}
+
+  /* ============ Toast ============ */
+  .toast{
+    position:fixed;right:24px;bottom:24px;z-index:60;
+    display:flex;align-items:center;gap:10px;
+    padding:12px 16px;border-radius:11px;font-size:13px;color:#d9fbff;
+    background:linear-gradient(180deg,rgba(13,28,44,.97),rgba(9,18,32,.97));
+    border:1px solid rgba(34,211,238,.4);box-shadow:0 16px 40px rgba(0,0,0,.5);
+    opacity:0;transform:translateY(14px);pointer-events:none;transition:.25s;
+  }
+  .toast.show{opacity:1;transform:none;}
+  .toast svg{width:16px;height:16px;color:var(--ok);}
+
+  @media (max-width:1240px){
+    .combo{width:180px;}
+  }
+  @media (max-width:900px){
+    .sidebar{width:210px;flex-basis:210px;}
+    .input,.combo{width:100%;min-width:150px;}
+    .field{flex:1 1 150px;}
+    .range{width:100%;}
+    .range .input{flex:1 1 0;width:auto;min-width:70px;}
+  }
+</style>
+{% endblock %}
+
+{% block crumb %}
+        <span>基础信息</span><span class="sep">/</span>
+        <span>模型</span><span class="sep">/</span>
+        <span class="cur">模型列表</span>
+{% endblock %}
+
+{% block content %}
+    <div class="content">
+      <div class="hero">
+        <div>
+          <h1><span>模型列表</span></h1>
+          <p>维护各平台模型的类型与输入 / 输出 token 计费标准，供提示词调试时选择模型并估算成本。</p>
+          <div class="glow-line"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <!-- 操作区：右上角为删除 / 添加 -->
+        <div class="toolbar">
+          <div class="toolbar-head">
+            <div class="tip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+              勾选左侧复选框可批量删除模型。
+            </div>
+            <div class="actions">
+              <button class="btn btn-ghost" type="button" id="btnEdit" onclick="openEdit()" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19h4L19 8l-3-3L5 16v3z"/><path d="M15 6l3 3"/>
+                </svg>
+                编辑
+              </button>
+              <button class="btn btn-danger" type="button" id="btnDelete" onclick="askDelete()" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>
+                </svg>
+                删除
+              </button>
+              <a class="btn btn-primary" href="{% url 'basic:model_add' %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                添加模型
+              </a>
+            </div>
+          </div>
+
+          <div class="filters">
+            <div class="field">
+              <label for="f-platform">平台 / 官方名</label>
+              <div class="combo" id="combo-platform">
+                <input class="input" id="f-platform" type="text" placeholder="选择或输入平台名" autocomplete="off"
+                       role="combobox" aria-expanded="false" aria-controls="comboPlatformList" />
+                <button class="combo-btn" type="button" tabindex="-1" aria-label="展开平台列表">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="combo-list" id="comboPlatformList" role="listbox"></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="f-type">类型</label>
+              <div class="combo" id="combo-type">
+                <input class="input" id="f-type" type="text" placeholder="选择或输入模型类型" autocomplete="off"
+                       role="combobox" aria-expanded="false" aria-controls="comboTypeList" />
+                <button class="combo-btn" type="button" tabindex="-1" aria-label="展开类型列表">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="combo-list" id="comboTypeList" role="listbox"></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="f-model">模型名</label>
+              <input class="input" id="f-model" type="text" placeholder="如：gpt-4o、deepseek-chat" autocomplete="off" />
+            </div>
+
+            <div class="field">
+              <label for="f-in-min">输入 token 费用</label>
+              <div class="range">
+                <input class="input" id="f-in-min" type="number" min="0" step="0.01" placeholder="最低" />
+                <span class="tilde">~</span>
+                <input class="input" id="f-in-max" type="number" min="0" step="0.01" placeholder="最高" />
+                <span class="unit">元</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="f-out-min">输出 token 费用</label>
+              <div class="range">
+                <input class="input" id="f-out-min" type="number" min="0" step="0.01" placeholder="最低" />
+                <span class="tilde">~</span>
+                <input class="input" id="f-out-max" type="number" min="0" step="0.01" placeholder="最高" />
+                <span class="unit">元</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" type="button" onclick="doSearch()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
+              搜索
+            </button>
+            <button class="btn btn-ghost" type="button" onclick="doReset()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              重置
+            </button>
+          </div>
+        </div>
+
+        <!-- 表格 -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="checkAll" onclick="toggleAll(this)" title="全选 / 取消全选" /></th>
+                <th class="col-platform">平台 / 官方名</th>
+                <th class="col-model">模型名</th>
+                <th class="col-type">类型</th>
+                <th class="col-cost">输入 token 费用<small>元 / 百万 token</small></th>
+                <th class="col-cost">输出 token 费用<small>元 / 百万 token</small></th>
+              </tr>
+            </thead>
+            <tbody id="tbody">              {% for m in models %}
+              <tr data-platform="{{ m.srv.plat_name }}" data-model="{{ m.model_name }}" data-type="{{ m.model_type }}" data-in="{{ m.in_price_raw }}" data-out="{{ m.out_price_raw }}" data-unit="{{ m.bill_unit }}" data-url="{{ m.doc_url|default:'' }}" data-id="{{ m.id }}">
+                <td class="col-check"><input type="checkbox" class="row-check" onclick="onRowCheck(this)" /></td>
+                <td>{% if m.srv.home_url %}<a class="lnk" href="{{ m.srv.home_url }}" target="_blank" rel="noopener" title="打开平台首页">{{ m.srv.plat_name }}<span class="ext">↗</span></a>{% else %}<span class="lnk off" title="未登记平台首页">{{ m.srv.plat_name }}</span>{% endif %}{% if m.srv.is_aggregator %}<span class="badge">聚合平台</span>{% endif %}</td>
+                <td>{% if m.doc_url %}<a class="lnk model" href="{{ m.doc_url }}" target="_blank" rel="noopener" title="打开模型说明">{{ m.model_name }}<span class="ext">↗</span></a>{% else %}<span class="lnk model off" title="未登记模型说明">{{ m.model_name }}</span>{% endif %}{% if m.srv.is_regional %}<span class="badge">区域部署</span>{% endif %}{% if m.is_free %}<span class="badge free">{% if m.srv.is_aggregator %}限免{% else %}免费{% endif %}</span>{% endif %}</td>
+                <td>{% for t in m.type_list %}<span class="type" data-type="{{ t }}">{{ t }}</span>{% if not forloop.last %} {% endif %}{% endfor %}</td>
+                <td>{% if m.in_price_na %}<span class="cost zero">—</span>{% else %}<span class="cost"><span class="cur">¥</span>{{ m.in_price_text }}</span>{% endif %}</td>
+                <td>{% if m.out_price_na %}<span class="cost zero">—</span>{% else %}<span class="cost"><span class="cur">¥</span>{{ m.out_price_text }}</span>{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="empty" id="empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/><path d="M8.5 11h5"/>
+          </svg>
+          <p>没有匹配的模型，试试调整搜索条件或点击“重置”。</p>
+        </div>
+
+        <div class="panel-foot">
+          <div>共 <b id="total">0</b> 条记录 · 已选 <b id="selCount">0</b> 项</div>
+          <div class="pager">
+            <button type="button" disabled>上一页</button>
+            <button type="button" class="on">1</button>
+            <button type="button">2</button>
+            <button type="button">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+{% endblock %}
+{% block overlays %}
+<div class="modal-mask" id="delMask">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+    <h3 id="delTitle">
+      <span class="warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 4l9 16H3l9-16z"/><path d="M12 10v4M12 17.5h.01"/>
+        </svg>
+      </span>
+      确认删除
+    </h3>
+    <p>删除后该模型将从可选模型列表中移除，提示词调试时不再能选择该模型，是否确定删除以下模型？</p>
+    <div class="target" id="delTarget"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeDelete()">取消</button>
+      <button class="btn btn-danger" type="button" onclick="confirmDelete()" style="border-color:rgba(239,68,68,.6)">确定删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 编辑模型弹窗（字段与「添加模型」一致） ================= -->
+<div class="modal-mask" id="editMask">
+  <div class="modal form" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <h3 id="editTitle">
+      <span class="info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19h4L19 8l-3-3L5 16v3z"/><path d="M15 6l3 3"/>
+        </svg>
+      </span>
+      编辑模型
+    </h3>
+    <p>字段与「添加模型」一致，保存后立即生效。</p>
+    <div class="target" id="editTarget"></div>
+
+    <div class="form-grid">
+      <!-- 服务器 -->
+      <div class="field" id="efld-server">
+        <label for="e-server">服务器<i class="req">*</i></label>
+        <div class="select-wrap">
+          <select class="select" id="e-server">
+            <option value="">请选择服务器</option>
+            {% for srv in servers %}<option value="{{ srv.plat_name }}">{{ srv.plat_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="err" id="eerr-server"></div>
+      </div>
+
+      <!-- 模型名 -->
+      <div class="field" id="efld-name">
+        <label for="e-name">模型名<i class="req">*</i></label>
+        <input class="input mono" id="e-name" type="text" placeholder="如：gpt-4o、deepseek-chat" autocomplete="off" />
+        <div class="err" id="eerr-name"></div>
+      </div>
+
+      <!-- 类型：可多选 -->
+      <div class="field span-2" id="efld-types">
+        <label for="emsBox">类型<i class="req">*</i></label>
+        <div class="ms" id="ems-type">
+          <div class="ms-box" id="emsBox" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
+            <span class="ms-ph" id="emsPh">请选择类型（可多选）</span>
+            <span class="ms-chips" id="emsChips"></span>
+          </div>
+          <button class="ms-btn" id="emsBtn" type="button" tabindex="-1" aria-label="展开类型列表">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="ms-list" id="emsList" role="listbox" aria-multiselectable="true"></div>
+        </div>
+        <div class="hint">可多选，同一个模型可同时具备多种能力；已选中的标签可点 × 移除</div>
+        <div class="err" id="eerr-types"></div>
+      </div>
+
+      <!-- 输入 token 计费 -->
+      <div class="field" id="efld-inCost">
+        <label for="e-inCost">输入 token 计费<i class="req">*</i></label>
+        <input class="input num" id="e-inCost" type="text" inputmode="decimal" placeholder="如：2.5" autocomplete="off" />
+        <div class="hint">只能输入数字和小数点，如 2.5</div>
+        <div class="err" id="eerr-inCost"></div>
+      </div>
+
+      <!-- 输出 token 计费 -->
+      <div class="field" id="efld-outCost">
+        <label for="e-outCost">输出 token 计费</label>
+        <input class="input num" id="e-outCost" type="text" inputmode="decimal" placeholder="如：10" autocomplete="off" />
+        <div class="hint">只能输入数字和小数点；嵌入 / 重排类模型可留空</div>
+        <div class="err" id="eerr-outCost"></div>
+      </div>
+
+      <!-- 单位 -->
+      <div class="field" id="efld-unit">
+        <label for="e-unit">单位<i class="req">*</i></label>
+        <div class="select-wrap">
+          <select class="select" id="e-unit">
+            <option value="K">K</option>
+            <option value="万">万</option>
+            <option value="十万">十万</option>
+            <option value="百万">百万</option>
+          </select>
+        </div>
+        <div class="err" id="eerr-unit"></div>
+      </div>
+
+      <!-- 网址 -->
+      <div class="field" id="efld-url">
+        <label for="e-url">网址</label>
+        <input class="input mono" id="e-url" type="text" placeholder="https://platform.openai.com/docs/models" autocomplete="off" />
+        <div class="err" id="eerr-url"></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeEdit()">取消</button>
+      <button class="btn btn-primary" type="button" onclick="confirmEdit()">保存</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_script %}
+<script>
+  const DELETE_URL = "{% url 'basic:model_delete' %}";
+  const UPDATE_URL = "{% url 'basic:model_update' %}";
+
+  /* ---------- 菜单展开 / 收起 ---------- */
+  function toggleMenu(id){
+    document.getElementById(id).classList.toggle('open');
+  }
+
+  /* ---------- 表格状态 ---------- */
+  const tbody      = document.getElementById('tbody');
+  const checkAll   = document.getElementById('checkAll');
+  const btnEdit    = document.getElementById('btnEdit');
+  const btnDelete  = document.getElementById('btnDelete');
+  const emptyBox   = document.getElementById('empty');
+  const totalEl    = document.getElementById('total');
+  const selCountEl = document.getElementById('selCount');
+
+  const allRows     = () => Array.from(tbody.querySelectorAll('tr'));
+  const rows        = () => allRows().filter(tr => tr.style.display !== 'none');
+  const checkedRows = () => rows().filter(tr => tr.querySelector('.row-check').checked);
+
+  function refresh(){
+    const visible = rows();
+    const checked = checkedRows();
+    const allChecked = visible.length > 0 && checked.length === visible.length;
+
+    checkAll.checked = allChecked;
+    checkAll.indeterminate = checked.length > 0 && !allChecked;
+
+    btnEdit.disabled = checked.length === 0;
+    btnDelete.disabled = checked.length === 0;
+    totalEl.textContent = visible.length;
+    selCountEl.textContent = checked.length;
+    emptyBox.style.display = visible.length === 0 ? 'block' : 'none';
+  }
+
+  function toggleAll(box){
+    rows().forEach(tr => {
+      tr.querySelector('.row-check').checked = box.checked;
+      tr.classList.toggle('checked', box.checked);
+    });
+    refresh();
+  }
+
+  function onRowCheck(box){
+    box.closest('tr').classList.toggle('checked', box.checked);
+    refresh();
+  }
+
+  /* ---------- 可编辑下拉框（平台 / 官方名、类型） ---------- */
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  function highlight(text, q){
+    if (!q) return escapeHtml(text);
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return escapeHtml(text);
+    return escapeHtml(text.slice(0, i)) +
+           '<mark>' + escapeHtml(text.slice(i, i + q.length)) + '</mark>' +
+           escapeHtml(text.slice(i + q.length));
+  }
+
+  function uniqueFrom(attr){
+    const out = [];
+    allRows().forEach(tr => {
+      const v = tr.dataset[attr];
+      if (v && out.indexOf(v) === -1) out.push(v);
+    });
+    return out;
+  }
+
+  const PLATFORM_OPTIONS = uniqueFrom('platform');
+  const TYPE_OPTIONS     = uniqueFrom('type');
+  const AGGREGATORS      = ['硅基流动 SiliconFlow', 'OpenRouter', '魔搭社区 ModelScope'];
+
+  function setupCombo(rootId, options, onInput){
+    const root  = document.getElementById(rootId);
+    const input = root.querySelector('input');
+    const btn   = root.querySelector('.combo-btn');
+    const list  = root.querySelector('.combo-list');
+    let activeIndex = -1;
+
+    function render(){
+      const q = input.value.trim();
+      const matched = options.filter(function(o){
+        return o.toLowerCase().indexOf(q.toLowerCase()) > -1;
+      });
+      activeIndex = -1;
+
+      if (!matched.length){
+        list.innerHTML = '<div class="combo-empty">没有匹配的内置选项，可直接输入「' +
+          escapeHtml(q) + '」按自定义值搜索。</div>';
+        return;
+      }
+
+      list.innerHTML = matched.map(function(name){
+        const tag = AGGREGATORS.indexOf(name) > -1 ? '<span class="tag">聚合平台</span>' : '';
+        return '<div class="combo-item" role="option" data-name="' + escapeHtml(name) + '">' +
+                 '<span>' + highlight(name, q) + '</span>' + tag +
+               '</div>';
+      }).join('');
+    }
+
+    function setActive(idx){
+      const items = list.querySelectorAll('.combo-item');
+      for (let i = 0; i < items.length; i++) items[i].classList.toggle('on', i === idx);
+      activeIndex = idx;
+      if (items[idx]) items[idx].scrollIntoView({ block:'nearest' });
+    }
+
+    function open(){
+      root.classList.add('open');
+      input.setAttribute('aria-expanded', 'true');
+      render();
+    }
+
+    function close(){
+      root.classList.remove('open');
+      input.setAttribute('aria-expanded', 'false');
+      activeIndex = -1;
+    }
+
+    function pick(name){
+      input.value = name;
+      close();
+      if (onInput) onInput();
+    }
+
+    input.addEventListener('focus', open);
+    input.addEventListener('input', function(){ open(); if (onInput) onInput(); });
+
+    btn.addEventListener('click', function(){
+      if (root.classList.contains('open')) close();
+      else { input.focus(); open(); }
+    });
+
+    list.addEventListener('click', function(e){
+      const item = e.target.closest('.combo-item');
+      if (item) pick(item.dataset.name);
+    });
+
+    list.addEventListener('mouseover', function(e){
+      const item = e.target.closest('.combo-item');
+      if (!item) return;
+      const items = Array.prototype.slice.call(list.querySelectorAll('.combo-item'));
+      setActive(items.indexOf(item));
+    });
+
+    input.addEventListener('keydown', function(e){
+      const items = list.querySelectorAll('.combo-item');
+      if (e.key === 'ArrowDown'){
+        e.preventDefault(); open();
+        if (items.length) setActive(Math.min(activeIndex + 1, items.length - 1));
+      } else if (e.key === 'ArrowUp'){
+        e.preventDefault();
+        if (items.length) setActive(Math.max(activeIndex - 1, 0));
+      } else if (e.key === 'Enter'){
+        e.preventDefault();
+        if (activeIndex > -1 && items[activeIndex]) pick(items[activeIndex].dataset.name);
+        else { close(); doSearch(); }
+      } else if (e.key === 'Escape'){
+        close();
+      }
+    });
+
+    document.addEventListener('click', function(e){
+      if (!root.contains(e.target)) close();
+    });
+
+    return { close:close, input:input };
+  }
+
+  const platformCombo = setupCombo('combo-platform', PLATFORM_OPTIONS);
+  const typeCombo     = setupCombo('combo-type', TYPE_OPTIONS);
+  /* ---------- 搜索 / 重置 ---------- */
+  function toNum(v){
+    if (v === '') return null;
+    const n = parseFloat(v);
+    return isNaN(n) ? null : n;
+  }
+
+  function inRange(value, min, max){
+    if (min === null && max === null) return true;
+    const low  = min === null ? -Infinity : min;
+    const high = max === null ?  Infinity : max;
+    const a = Math.min(low, high);
+    const b = Math.max(low, high);
+    if (isNaN(value)) return false;
+    return value >= a && value <= b;
+  }
+
+  function doSearch(){
+    const p      = document.getElementById('f-platform').value.trim().toLowerCase();
+    const t      = document.getElementById('f-type').value.trim().toLowerCase();
+    const m      = document.getElementById('f-model').value.trim().toLowerCase();
+    const inMin  = toNum(document.getElementById('f-in-min').value.trim());
+    const inMax  = toNum(document.getElementById('f-in-max').value.trim());
+    const outMin = toNum(document.getElementById('f-out-min').value.trim());
+    const outMax = toNum(document.getElementById('f-out-max').value.trim());
+
+    allRows().forEach(tr => {
+      const hitPlatform = (tr.dataset.platform || '').toLowerCase().indexOf(p) > -1;
+      const hitType     = (tr.dataset.type || '').toLowerCase().indexOf(t) > -1;
+      const hitModel    = (tr.dataset.model || '').toLowerCase().indexOf(m) > -1;
+      const hitIn       = inRange(parseFloat(tr.dataset.in),  inMin,  inMax);
+      const hitOut      = inRange(parseFloat(tr.dataset.out), outMin, outMax);
+      const show = hitPlatform && hitType && hitModel && hitIn && hitOut;
+
+      tr.style.display = show ? '' : 'none';
+      if (!show){
+        tr.querySelector('.row-check').checked = false;
+        tr.classList.remove('checked');
+      }
+    });
+
+    checkAll.checked = false;
+    checkAll.indeterminate = false;
+    refresh();
+  }
+
+  function doReset(){
+    document.getElementById('f-platform').value = '';
+    document.getElementById('f-type').value = '';
+    document.getElementById('f-model').value = '';
+    ['f-in-min','f-in-max','f-out-min','f-out-max'].forEach(function(id){
+      document.getElementById(id).value = '';
+    });
+    platformCombo.close();
+    typeCombo.close();
+
+    allRows().forEach(tr => {
+      tr.style.display = '';
+      tr.querySelector('.row-check').checked = false;
+      tr.classList.remove('checked');
+    });
+    checkAll.checked = false;
+    checkAll.indeterminate = false;
+    refresh();
+    showToast('已重置搜索条件');
+  }
+
+  ['f-model','f-in-min','f-in-max','f-out-min','f-out-max'].forEach(function(id){
+    document.getElementById(id).addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); doSearch(); }
+    });
+  });
+
+  /* ---------- 删除：确认后执行 ---------- */
+  function askDelete(){
+    const items = checkedRows().map(function(tr){
+      const model = tr.querySelector('.lnk.model').textContent.replace('↗', '').trim();
+      return tr.dataset.platform + ' · ' + model;
+    });
+    if (!items.length) return;
+
+    document.getElementById('delTarget').innerHTML =
+      items.map(n => '<div>· ' + escapeHtml(n) + '</div>').join('');
+    document.getElementById('delMask').classList.add('show');
+  }
+
+  function closeDelete(){
+    document.getElementById('delMask').classList.remove('show');
+  }
+
+  function confirmDelete(){
+    const targets = checkedRows();
+    const count = targets.length;
+    if (!count) return;
+
+    const ids = targets.map(function(tr){ return Number(tr.dataset.id); });
+
+    postJson(DELETE_URL, { ids: ids }).then(function (data){
+      if (!data.ok){
+        closeDelete();
+        showToast(data.error || '删除失败，请重试');
+        return;
+      }
+
+      targets.forEach(tr => tr.remove());
+      closeDelete();
+      checkAll.checked = false;
+      checkAll.indeterminate = false;
+      refresh();
+      showToast('已删除 ' + count + ' 个模型');
+    }).catch(function (){
+      closeDelete();
+      showToast('删除失败，请检查服务是否正常');
+    });
+  }
+
+  document.getElementById('delMask').addEventListener('click', function(e){
+    if (e.target.id === 'delMask') closeDelete();
+  });
+
+  /* ---------- 编辑：弹窗字段与「添加模型」一致 ---------- */
+  const EDIT_TYPE_OPTIONS = ['对话', '视频', '嵌入', '生图', '语音', '重排'];
+  const URL_RE    = /^https?:\/\/[^\s]+$/i;
+  const AMOUNT_RE = /^\d+(\.\d+)?$/;
+  const EDIT_FIELDS = ['server', 'name', 'types', 'inCost', 'outCost', 'unit', 'url'];
+  let editingId = null;
+
+  const emsRoot  = document.getElementById('ems-type');
+  const emsBox   = document.getElementById('emsBox');
+  const emsBtn   = document.getElementById('emsBtn');
+  const emsList  = document.getElementById('emsList');
+  const emsPh    = document.getElementById('emsPh');
+  const emsChips = document.getElementById('emsChips');
+
+  function editTypeChecks(){
+    return Array.prototype.slice.call(emsList.querySelectorAll('input[type="checkbox"]'));
+  }
+
+  function renderEditTypeItems(types){
+    const all = EDIT_TYPE_OPTIONS.slice();
+    types.forEach(function(t){ if (t && all.indexOf(t) === -1) all.push(t); });
+
+    emsList.innerHTML = all.map(function(t){
+      return '<label class="ms-item">' +
+               '<input type="checkbox" value="' + escapeHtml(t) + '" />' +
+               '<span class="type" data-type="' + escapeHtml(t) + '">' + escapeHtml(t) + '</span>' +
+             '</label>';
+    }).join('') +
+    '<div class="ms-foot">' +
+      '<button class="ms-mini" type="button" onclick="toggleAllEditTypes(true)">全选</button>' +
+      '<button class="ms-mini" type="button" onclick="toggleAllEditTypes(false)">清空</button>' +
+      '<button class="ms-mini sel" type="button" onclick="closeEditMs()">完成</button>' +
+    '</div>';
+  }
+
+  function selectedEditTypes(){
+    return editTypeChecks().filter(function(c){ return c.checked; }).map(function(c){ return c.value; });
+  }
+
+  function renderEditChips(){
+    const picked = selectedEditTypes();
+    emsPh.style.display = picked.length ? 'none' : '';
+    emsChips.innerHTML = picked.map(function(t){
+      return '<span class="chip-type" data-type="' + escapeHtml(t) + '">' + escapeHtml(t) +
+               '<i data-remove="' + escapeHtml(t) + '" title="移除">×</i></span>';
+    }).join('');
+  }
+
+  function openEditMs(){
+    emsRoot.classList.add('open');
+    emsBox.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeEditMs(){
+    emsRoot.classList.remove('open');
+    emsBox.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleAllEditTypes(on){
+    editTypeChecks().forEach(function(c){ c.checked = on; });
+    renderEditChips();
+    clearEditErr('types');
+  }
+
+  emsBox.addEventListener('click', function(e){
+    if (e.target.closest('[data-remove]')) return;
+    if (emsRoot.classList.contains('open')) closeEditMs(); else openEditMs();
+  });
+
+  emsBox.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      if (emsRoot.classList.contains('open')) closeEditMs(); else openEditMs();
+    } else if (e.key === 'Escape'){
+      closeEditMs();
+    }
+  });
+
+  emsBtn.addEventListener('click', function(){
+    if (emsRoot.classList.contains('open')) closeEditMs(); else openEditMs();
+  });
+
+  emsChips.addEventListener('click', function(e){
+    const icon = e.target.closest('[data-remove]');
+    if (!icon) return;
+    const t = icon.getAttribute('data-remove');
+    editTypeChecks().forEach(function(c){ if (c.value === t) c.checked = false; });
+    renderEditChips();
+    clearEditErr('types');
+  });
+
+  emsList.addEventListener('change', function(){
+    renderEditChips();
+    clearEditErr('types');
+  });
+
+  document.addEventListener('click', function(e){
+    if (!emsRoot.contains(e.target)) closeEditMs();
+  });
+
+  function setEditErr(field, msg){
+    document.getElementById('eerr-' + field).textContent = msg;
+    document.getElementById('efld-' + field).classList.add('invalid');
+  }
+
+  function clearEditErr(field){
+    document.getElementById('efld-' + field).classList.remove('invalid');
+  }
+
+  /* 下拉框选值：不在候选项里时补一个，避免编辑时把原有的值悄悄改掉 */
+  function setSelectValue(sel, value){
+    let found = false;
+    for (let i = 0; i < sel.options.length; i++){
+      if (sel.options[i].value === value){ found = true; break; }
+    }
+    if (!found){
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = value || '（未填写）';
+      sel.appendChild(opt);
+    }
+    sel.value = value;
+  }
+
+  function openEdit(){
+    const targets = checkedRows();
+    if (!targets.length) return;
+    if (targets.length > 1){
+      showToast('一次只能编辑一条，已打开「' + targets[0].dataset.model + '」', 'warn');
+    }
+
+    const tr    = targets[0];
+    const types = (tr.dataset.type || '').replace(/，/g, ',')
+                    .split(',').map(function(t){ return t.trim(); }).filter(Boolean);
+
+    editingId = Number(tr.dataset.id);
+
+    renderEditTypeItems(types);
+    editTypeChecks().forEach(function(c){ c.checked = types.indexOf(c.value) > -1; });
+    renderEditChips();
+    closeEditMs();
+
+    setSelectValue(document.getElementById('e-server'), tr.dataset.platform || '');
+    document.getElementById('e-name').value    = tr.dataset.model || '';
+    document.getElementById('e-inCost').value  = tr.dataset.in || '';
+    document.getElementById('e-outCost').value = tr.dataset.out || '';
+    setSelectValue(document.getElementById('e-unit'), tr.dataset.unit || '');
+    document.getElementById('e-url').value     = tr.dataset.url || '';
+
+    EDIT_FIELDS.forEach(clearEditErr);
+    document.getElementById('editTarget').textContent =
+      (tr.dataset.platform || '') + ' · ' + (tr.dataset.model || '');
+    document.getElementById('editMask').classList.add('show');
+  }
+
+  function closeEdit(){
+    closeEditMs();
+    document.getElementById('editMask').classList.remove('show');
+  }
+
+  function confirmEdit(){
+    if (editingId === null) return;
+
+    const server  = document.getElementById('e-server').value;
+    const name    = document.getElementById('e-name').value.trim();
+    const inCost  = document.getElementById('e-inCost').value.trim();
+    const outCost = document.getElementById('e-outCost').value.trim();
+    const url     = document.getElementById('e-url').value.trim();
+    const picked  = selectedEditTypes();
+
+    let ok = true;
+
+    if (!server){ setEditErr('server', '请选择模型所属服务器'); ok = false; }
+    else { clearEditErr('server'); }
+
+    if (!name){ setEditErr('name', '请输入模型名'); ok = false; }
+    else { clearEditErr('name'); }
+
+    if (!picked.length){ setEditErr('types', '请至少选择一种类型'); ok = false; }
+    else { clearEditErr('types'); }
+
+    if (!inCost){
+      setEditErr('inCost', '请输入输入 token 计费'); ok = false;
+    } else if (!AMOUNT_RE.test(inCost)){
+      setEditErr('inCost', '只能输入数字和小数点，如 2.5'); ok = false;
+    } else { clearEditErr('inCost'); }
+
+    if (outCost && !AMOUNT_RE.test(outCost)){
+      setEditErr('outCost', '只能输入数字和小数点，如 10'); ok = false;
+    } else { clearEditErr('outCost'); }
+
+    if (url && !URL_RE.test(url)){
+      setEditErr('url', '格式不正确，需以 http:// 或 https:// 开头'); ok = false;
+    } else { clearEditErr('url'); }
+
+    if (!ok){
+      showToast('请检查标红的项后再保存', 'warn');
+      const bad = document.querySelector(
+        '#editMask .field.invalid .input, #editMask .field.invalid .select, #editMask .field.invalid .ms-box');
+      if (bad) bad.focus();
+      return;
+    }
+
+    closeEditMs();
+
+    postJson(UPDATE_URL, {
+      id:         editingId,
+      srv_name:   server,
+      model_name: name,
+      model_type: picked.join(','),
+      in_price:   inCost,
+      out_price:  outCost,
+      bill_unit:  document.getElementById('e-unit').value,
+      doc_url:    url
+    }).then(function (data){
+      if (!data.ok){
+        showToast(data.error || '保存失败，请重试', 'warn');
+        return;
+      }
+      closeEdit();
+      showToast('已保存模型「' + name + '」');
+      setTimeout(function(){ location.reload(); }, 900);
+    }).catch(function (){
+      showToast('保存失败，请检查服务是否正常', 'warn');
+    });
+  }
+
+  /* 金额输入：只保留数字与小数点（与「添加模型」一致） */
+  function sanitizeEditAmount(value){
+    let s = String(value).replace(/[^\d.]/g, '');
+    const i = s.indexOf('.');
+    if (i > -1) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '');
+    const m = s.match(/^\d*\.?\d{0,4}/);
+    return m ? m[0] : '';
+  }
+
+  ['inCost', 'outCost'].forEach(function(field){
+    const el = document.getElementById('e-' + field);
+    el.addEventListener('input', function(){
+      const cleaned = sanitizeEditAmount(el.value);
+      if (cleaned !== el.value) el.value = cleaned;
+      clearEditErr(field);
+    });
+  });
+
+  ['name', 'url'].forEach(function(field){
+    const el = document.getElementById('e-' + field);
+    el.addEventListener('input', function(){ clearEditErr(field); });
+    el.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); confirmEdit(); }
+    });
+  });
+
+  ['server', 'unit'].forEach(function(field){
+    document.getElementById('e-' + field).addEventListener('change', function(){
+      clearEditErr(field);
+    });
+  });
+
+  document.getElementById('editMask').addEventListener('click', function(e){
+    if (e.target.id === 'editMask') closeEdit();
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape'){ closeDelete(); closeEdit(); }
+  });
+
+  /* ---------- 轻提示 ---------- */
+  const TOAST_ICONS = {
+    ok:   '<path d="M20 6L9 17l-5-5"/>',
+    warn: '<path d="M12 4l9 16H3l9-16z"/><path d="M12 10v4M12 17.5h.01"/>'
+  };
+
+  let toastTimer = null;
+  function showToast(text, variant){
+    const t      = document.getElementById('toast');
+    const icon   = document.getElementById('toastIcon');
+    const isWarn = variant === 'warn';
+
+    document.getElementById('toastText').textContent = text;
+    icon.innerHTML = isWarn ? TOAST_ICONS.warn : TOAST_ICONS.ok;
+    icon.style.color = isWarn ? '#fca5a5' : '';
+    t.style.borderColor = isWarn ? 'rgba(239,68,68,.45)' : '';
+
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  }
+
+  refresh();
+</script>
+{% endblock %}

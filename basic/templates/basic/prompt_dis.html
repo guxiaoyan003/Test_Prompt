@@ -1,0 +1,1181 @@
+{% extends 'basic/base.html' %}
+
+{% block title %}提示词调试 · Test_Prompt{% endblock %}
+
+{% block page_style %}
+<style>
+  :root{
+    --bg:#060a12;
+    --panel:rgba(13,21,36,.86);
+    --line:#1c2a44;
+    --line-soft:rgba(120,160,220,.12);
+    --text:#e6f1ff;
+    --text-dim:#9db0d4;
+    --muted:#6f83a8;
+    --cyan:#22d3ee;
+    --blue:#3b82f6;
+    --violet:#8b5cf6;
+    --danger:#ef4444;
+    --ok:#34d399;
+    --radius:14px;
+    --mono:"JetBrains Mono","Cascadia Mono",Consolas,monospace;
+    --shadow:0 18px 48px rgba(2,8,20,.55);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    color:var(--text);
+    background:
+      radial-gradient(1100px 620px at 12% -10%, rgba(34,211,238,.16), transparent 60%),
+      radial-gradient(900px 560px at 96% 4%, rgba(139,92,246,.16), transparent 62%),
+      radial-gradient(700px 700px at 60% 120%, rgba(59,130,246,.12), transparent 60%),
+      var(--bg);
+    font-family:"Segoe UI","Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif;
+    font-size:14px;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(120,170,255,.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,170,255,.055) 1px, transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(circle at 50% 22%, #000 30%, transparent 88%);
+    mask-image:radial-gradient(circle at 50% 22%, #000 30%, transparent 88%);
+  }
+
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;}
+
+  /* ============ 布局 ============ */
+  .app{position:relative;z-index:1;display:flex;height:100vh;overflow:hidden;}
+
+  /* ============ 左侧菜单 ============ */
+  .sidebar{
+    width:252px;flex:0 0 252px;display:flex;flex-direction:column;
+    background:linear-gradient(180deg, rgba(11,18,32,.96), rgba(6,10,18,.96));
+    border-right:1px solid var(--line);
+    backdrop-filter:blur(6px);
+  }
+  .brand{
+    display:flex;align-items:center;gap:11px;
+    padding:17px 18px;border-bottom:1px solid var(--line);
+  }
+  .brand .logo{
+    width:38px;height:38px;border-radius:11px;flex:0 0 38px;
+    display:grid;place-items:center;
+    background:linear-gradient(140deg, rgba(34,211,238,.95), rgba(59,130,246,.9) 55%, rgba(139,92,246,.92));
+    box-shadow:0 0 0 1px rgba(140,220,255,.35), 0 8px 22px rgba(34,211,238,.35);
+  }
+  .brand .logo svg{width:21px;height:21px;stroke:#04121f;}
+  .brand .title{
+    font-size:17px;font-weight:700;letter-spacing:.4px;
+    background:linear-gradient(90deg,#e8f7ff,#67e8f9 60%,#a78bfa);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .brand .sub{font-size:11px;color:var(--muted);letter-spacing:1.1px;text-transform:uppercase;margin-top:2px;}
+
+  .nav{flex:1;overflow:auto;padding:12px 10px 22px;}
+  .nav::-webkit-scrollbar{width:8px;}
+  .nav::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:8px;}
+
+  .nav-label{
+    font-size:11px;letter-spacing:1.6px;color:var(--muted);
+    text-transform:uppercase;padding:10px 12px 8px;
+  }
+
+  .m1{margin-bottom:4px;}
+  .m1 > .m1-head,
+  .m2 > .m2-head{
+    display:flex;align-items:center;gap:10px;width:100%;
+    background:transparent;border:0;color:var(--text-dim);
+    padding:10px 12px;border-radius:10px;cursor:pointer;
+    font-size:13.5px;text-align:left;transition:.18s;
+  }
+  .m1 > .m1-head:hover,
+  .m2 > .m2-head:hover{background:rgba(120,170,255,.07);color:#dceaff;}
+  .m1 > .m1-head .ico{width:16px;height:16px;opacity:.85;}
+  .m2 > .m2-head .ico{width:14px;height:14px;opacity:.7;}
+  .m1 > .m1-head .txt,.m2 > .m2-head .txt{flex:1;}
+  .chev{width:14px;height:14px;transition:transform .2s;}
+  .open > .m1-head .chev,.open > .m2-head .chev{transform:rotate(90deg);}
+  .m1.current > .m1-head{
+    color:#eafcff;background:linear-gradient(90deg, rgba(139,92,246,.18), rgba(139,92,246,.02));
+    box-shadow:inset 0 0 0 1px rgba(139,92,246,.32);
+  }
+
+  .m2-wrap,.m3-wrap{display:none;}
+  .open > .m2-wrap{display:block;}
+  .m2.open > .m3-wrap{display:block;}
+
+  .m2{margin:2px 0 2px 6px;}
+  .m2 > .m2-head{padding:9px 12px;font-size:13px;}
+
+  .m3{margin:1px 0 1px 10px;border-left:1px solid var(--line);padding-left:6px;}
+  .m3 a{
+    display:flex;align-items:center;gap:9px;
+    padding:8px 12px;border-radius:9px;color:var(--muted);font-size:12.5px;
+    transition:.18s;position:relative;
+  }
+  .m3 a .dot{width:5px;height:5px;border-radius:50%;background:#2b3d5c;transition:.18s;}
+  .m3 a:hover{color:#dceaff;background:rgba(120,170,255,.07);}
+  .m3 a:hover .dot{background:#5f7ea8;}
+  .m3 a.active{
+    color:#eafcff;background:linear-gradient(90deg, rgba(34,211,238,.16), rgba(34,211,238,.02));
+    box-shadow:inset 0 0 0 1px rgba(34,211,238,.28);
+  }
+  .m3 a.active .dot{background:var(--cyan);box-shadow:0 0 9px var(--cyan);}
+  .m3 a.active::before{
+    content:"";position:absolute;left:-7px;top:50%;transform:translateY(-50%);
+    width:2px;height:16px;background:var(--cyan);border-radius:2px;box-shadow:0 0 10px var(--cyan);
+  }
+
+  /* ============ 右侧主区 ============ */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+
+  .topbar{
+    height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(13,21,36,.75), rgba(13,21,36,.25));
+    backdrop-filter:blur(8px);
+  }
+  .crumbs{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+  .crumbs .sep{opacity:.45;}
+  .crumbs .cur{color:#e8f7ff;font-weight:600;}
+  .topbar .right{display:flex;align-items:center;gap:14px;}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#b8e9f5;
+    padding:6px 12px;border-radius:999px;background:rgba(34,211,238,.08);
+    border:1px solid rgba(34,211,238,.28);
+  }
+  .pulse{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .avatar{
+    width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;
+    color:#04121f;background:linear-gradient(135deg,#67e8f9,#818cf8);
+  }
+
+  .content{flex:1;overflow:auto;padding:20px 22px 26px;}
+  .content::-webkit-scrollbar{width:10px;}
+  .content::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:10px;}
+
+  .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:16px;}
+  .hero h1{margin:0;font-size:20px;letter-spacing:.5px;}
+  .hero h1 span{
+    background:linear-gradient(90deg,#eafcff,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero p{margin:7px 0 0;font-size:12.5px;color:var(--muted);}
+  .hero .glow-line{
+    height:2px;width:120px;margin-top:12px;border-radius:2px;
+    background:linear-gradient(90deg,var(--cyan),rgba(139,92,246,0));
+    box-shadow:0 0 14px rgba(34,211,238,.7);
+  }
+
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);overflow:hidden;
+  }
+  .panel::before{
+    content:"";display:block;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(34,211,238,.55),rgba(139,92,246,.45),transparent);
+  }
+  .panel-head{
+    display:flex;align-items:center;gap:10px;
+    padding:14px 18px;border-bottom:1px solid var(--line-soft);
+    font-size:13.5px;font-weight:600;color:#cfe2ff;
+  }
+  .panel-head > svg{width:16px;height:16px;color:var(--cyan);}
+  .panel-head .head-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+  .out-meta{font-size:11.5px;font-weight:400;color:var(--muted);}
+  .panel-body{padding:18px;}
+  .panel-body + .panel-body{border-top:1px solid var(--line-soft);}
+
+  .work{display:grid;grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr);gap:16px;align-items:start;}
+  .col{display:flex;flex-direction:column;gap:16px;min-width:0;}
+
+  .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
+  .form-grid .span-2{grid-column:1 / -1;}
+
+  /* ============ 表单控件 ============ */
+  .field{display:flex;flex-direction:column;gap:6px;min-width:0;}
+  .field > label,.label-row > label{font-size:12px;color:var(--muted);letter-spacing:.3px;}
+  .label-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .req{color:#f87171;font-style:normal;margin-left:3px;}
+  .hint{margin-top:2px;font-size:11.5px;color:var(--muted);line-height:1.55;}
+  .hint b{color:#a9bfe2;font-weight:600;}
+  .err{display:none;margin-top:6px;font-size:11.5px;color:#fca5a5;}
+  .field.invalid .err{display:block;}
+  .field.invalid .hint{display:none;}
+  .field.invalid > .input,
+  .field.invalid > .input-wrap .input,
+  .field.invalid .select,
+  .field.invalid .textarea,
+  .field.invalid .fee-box{border-color:rgba(239,68,68,.7);box-shadow:0 0 0 3px rgba(239,68,68,.12);}
+
+  .input{
+    width:100%;height:38px;padding:0 13px;border-radius:9px;
+    background:#0a1322;border:1px solid #21354f;color:var(--text);font-size:13px;
+    transition:.18s;outline:none;
+  }
+  .input::placeholder{color:#4d6187;}
+  .input:focus{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.13);background:#0b1626;}
+  .input.mono{font-family:var(--mono);font-size:12.5px;}
+  .input:disabled{opacity:.55;cursor:not-allowed;}
+  .input[readonly]{
+    background:#080f1b;border-style:dashed;border-color:#25405f;color:#9fb6dc;cursor:not-allowed;
+  }
+  .input-wrap{position:relative;}
+  .input-wrap .input{padding-right:44px;}
+  .lock-badge{
+    position:absolute;right:13px;top:50%;transform:translateY(-50%);
+    color:#5c739b;display:grid;place-items:center;pointer-events:none;
+  }
+  .lock-badge svg{width:14px;height:14px;}
+  .icon-btn{
+    position:absolute;right:1px;top:1px;width:36px;height:36px;border:0;border-radius:0 8px 8px 0;
+    background:transparent;color:#7d94bb;cursor:pointer;display:grid;place-items:center;transition:.16s;
+  }
+  .icon-btn:hover{color:#eafcff;background:rgba(34,211,238,.09);}
+  .icon-btn svg{width:15px;height:15px;}
+
+  .select-wrap{position:relative;}
+  .select{
+    width:100%;height:38px;padding:0 40px 0 13px;border-radius:9px;cursor:pointer;
+    background:#0a1322;border:1px solid #21354f;color:var(--text);font-size:13px;
+    outline:none;transition:.18s;
+    -webkit-appearance:none;-moz-appearance:none;appearance:none;
+  }
+  .select:focus{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.13);background:#0b1626;}
+  .select.ph{color:#4d6187;}
+  .select option{background:#0b1424;color:#e6f1ff;}
+  .select:disabled{cursor:not-allowed;opacity:.6;}
+  .select-wrap::after{
+    content:"";position:absolute;right:15px;top:50%;width:7px;height:7px;pointer-events:none;
+    border-right:2px solid #7d94bb;border-bottom:2px solid #7d94bb;
+    transform:translateY(-70%) rotate(45deg);
+  }
+
+  /* 大文本框（带滚动条） */
+  .textarea{
+    width:100%;padding:12px 14px;border-radius:11px;display:block;
+    background:#0a1322;border:1px solid #21354f;color:var(--text);
+    font-size:13.5px;line-height:1.75;outline:none;transition:.18s;
+    resize:vertical;overflow:auto;
+    scrollbar-color:#1d2c46 #0a1322;
+  }
+  .textarea::placeholder{color:#4d6187;}
+  .textarea:focus{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.13);background:#0b1626;}
+  .textarea::-webkit-scrollbar{width:10px;height:10px;}
+  .textarea::-webkit-scrollbar-track{background:rgba(8,15,27,.9);border-radius:10px;}
+  .textarea::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:10px;border:2px solid transparent;background-clip:padding-box;}
+  .textarea::-webkit-scrollbar-thumb:hover{background:#2a4468;background-clip:padding-box;}
+  .textarea.mono{font-family:var(--mono);font-size:12.5px;line-height:1.7;}
+  #sysPrompt{height:196px;}
+  .round-input{height:94px;}
+  #out{height:clamp(250px,40vh,400px);}
+
+  /* ============ 多轮会话 ============ */
+  .switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:12.5px;color:var(--text-dim);}
+  .switch input{position:absolute;opacity:0;width:0;height:0;}
+  .switch .track{
+    width:38px;height:20px;flex:0 0 38px;border-radius:999px;position:relative;
+    background:#16233a;border:1px solid #25395a;transition:.2s;
+  }
+  .switch .track i{
+    position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;
+    background:#7d94bb;transition:.2s;
+  }
+  .switch input:checked + .track{
+    background:linear-gradient(135deg, rgba(34,211,238,.35), rgba(139,92,246,.35));
+    border-color:rgba(34,211,238,.7);
+  }
+  .switch input:checked + .track i{
+    left:20px;background:linear-gradient(135deg,#67e8f9,#a78bfa);
+    box-shadow:0 0 10px rgba(34,211,238,.85);
+  }
+  .switch input:focus-visible + .track{box-shadow:0 0 0 3px rgba(34,211,238,.18);}
+
+  .round{border:1px solid var(--line-soft);border-radius:12px;background:rgba(10,19,34,.45);padding:12px;}
+  .round + .round{margin-top:12px;}
+  .round-head{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+  .rno{
+    font-size:11.5px;color:#a5f3fc;padding:2px 10px;border-radius:999px;
+    background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.28);
+  }
+  .round-head .r-hint{margin-left:auto;font-size:11.5px;color:var(--muted);}
+  .round-del{
+    margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;
+    padding:4px 9px;border-radius:8px;cursor:pointer;transition:.16s;
+    background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);color:#ffb4b4;
+  }
+  .round-del:hover{background:rgba(239,68,68,.22);color:#fff;}
+  .round-del svg{width:12px;height:12px;}
+  .round-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;}
+
+  /* ============ token 费用标签 ============ */
+  .fee-box{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:40px;
+    padding:9px 12px;border-radius:11px;border:1px dashed #25405f;background:rgba(10,19,34,.45);
+    transition:.18s;
+  }
+  .fee-empty{font-size:12.5px;color:var(--muted);}
+  .fee-tag{
+    display:inline-flex;align-items:center;gap:9px;padding:6px 13px;border-radius:999px;
+    font-size:12.5px;transition:.22s;animation:pop .18s ease-out;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+  .fee-tag .dot{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 9px currentColor;}
+  .fee-tag b{font-family:var(--mono);font-size:13px;font-weight:700;}
+  .fee-tag .u{font-size:11.5px;opacity:.82;}
+  .fee-tag.in{color:#a5f3fc;background:rgba(34,211,238,.09);border:1px solid rgba(34,211,238,.32);}
+  .fee-tag.out{color:#ddd6fe;background:rgba(139,92,246,.11);border:1px solid rgba(139,92,246,.36);}
+  .fee-est{margin-left:auto;font-size:11.5px;color:var(--muted);}
+  .fee-est b{color:#8ff0ff;font-family:var(--mono);font-weight:600;}
+  /* ============ 指标卡 ============ */
+  .metrics{display:flex;flex-direction:column;gap:12px;}
+  .metric{
+    position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;
+    padding:15px 16px;border-radius:14px;border:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+    transition:.2s;
+  }
+  .metric .m-ico{
+    width:38px;height:38px;flex:0 0 38px;border-radius:11px;display:grid;place-items:center;
+    background:rgba(34,211,238,.09);border:1px solid rgba(34,211,238,.28);color:#67e8f9;
+  }
+  .metric .m-ico svg{width:18px;height:18px;}
+  .metric .m-body{min-width:0;}
+  .metric .m-label{font-size:12px;color:var(--muted);letter-spacing:.4px;}
+  .metric .m-duo{display:flex;gap:20px;flex-wrap:wrap;}
+  .metric .m-cell{min-width:0;}
+  .metric .m-cell-k{
+    display:flex;align-items:center;gap:5px;
+    font-size:10.5px;color:var(--muted);letter-spacing:.6px;
+  }
+  .metric .m-cell-k i{width:5px;height:5px;border-radius:50%;background:#67e8f9;flex:0 0 auto;}
+  .metric .m-cell.fee .m-cell-k i{background:#a78bfa;}
+  .metric .m-cell-v{
+    margin-top:3px;font-family:var(--mono);font-size:18px;font-weight:700;
+    color:#eafcff;letter-spacing:.4px;word-break:break-all;
+  }
+  .metric .m-sub{margin-top:4px;font-size:11.5px;color:var(--muted);word-break:break-all;}
+  .metric::after{
+    content:"";position:absolute;right:-32px;top:-32px;width:96px;height:96px;border-radius:50%;
+    background:radial-gradient(circle, rgba(34,211,238,.2), transparent 70%);pointer-events:none;
+  }
+  .metric.rate .m-ico{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.32);color:#c4b5fd;}
+  .metric.rate::after{background:radial-gradient(circle, rgba(139,92,246,.24), transparent 70%);}
+  .metric.total{
+    border-color:rgba(34,211,238,.4);
+    background:linear-gradient(135deg, rgba(34,211,238,.13), rgba(139,92,246,.13));
+    box-shadow:0 14px 34px rgba(34,211,238,.16);
+  }
+  .metric.total .m-cell-v{
+    font-size:22px;
+    background:linear-gradient(90deg,#eafcff,#67e8f9);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+
+  /* ============ 按钮 ============ */
+  .btn{
+    height:38px;padding:0 16px;border-radius:9px;font-size:13px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;justify-content:center;
+    border:1px solid transparent;transition:.18s;white-space:nowrap;
+  }
+  .btn svg{width:15px;height:15px;}
+  .btn.mini{height:32px;padding:0 12px;font-size:12.5px;}
+  .btn-primary{
+    background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#03131f;font-weight:700;
+    box-shadow:0 8px 22px rgba(34,211,238,.28);
+  }
+  .btn-primary:hover:not(:disabled){filter:brightness(1.08);box-shadow:0 10px 26px rgba(34,211,238,.4);}
+  .btn-ghost{background:#101c2e;border-color:#23385a;color:#cfe2ff;}
+  .btn-ghost:hover:not(:disabled){border-color:rgba(34,211,238,.6);color:#eafcff;background:#122238;}
+  .btn:disabled{opacity:.6;cursor:not-allowed;}
+  .btn.running svg{animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .mini-btn{
+    display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;
+    border-radius:8px;font-size:12px;cursor:pointer;transition:.16s;
+    background:#101c2e;border:1px solid #23385a;color:#a9bfe2;
+  }
+  .mini-btn:hover{border-color:rgba(34,211,238,.6);color:#eafcff;}
+  .mini-btn svg{width:13px;height:13px;}
+  .mini-btn.copied{border-color:rgba(34,197,94,.6);color:#86efac;background:#0d2019;}
+
+  .panel-foot{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:16px 18px;border-top:1px solid var(--line-soft);
+    background:rgba(255,255,255,.015);
+  }
+  .panel-foot .tip{margin-left:auto;font-size:12px;color:var(--muted);}
+  .kbd{
+    font-family:var(--mono);font-size:11px;font-weight:600;padding:1px 6px;border-radius:6px;
+    background:#101c2e;border:1px solid #23385a;color:#a9bfe2;
+  }
+
+  /* ============ Toast ============ */
+  .toast{
+    position:fixed;right:24px;bottom:24px;z-index:60;
+    display:flex;align-items:center;gap:10px;
+    padding:12px 16px;border-radius:11px;font-size:13px;color:#d9fbff;
+    background:linear-gradient(180deg,rgba(13,28,44,.97),rgba(9,18,32,.97));
+    border:1px solid rgba(34,211,238,.4);box-shadow:0 16px 40px rgba(0,0,0,.5);
+    opacity:0;transform:translateY(14px);pointer-events:none;transition:.25s;
+  }
+  .toast.show{opacity:1;transform:none;}
+  .toast svg{width:16px;height:16px;color:var(--ok);}
+
+  @media (max-width:1180px){
+    .work{grid-template-columns:minmax(0,1fr);}
+  }
+  @media (max-width:900px){
+    .sidebar{width:210px;flex-basis:210px;}
+  }
+  @media (max-width:760px){
+    .form-grid{grid-template-columns:minmax(0,1fr);}
+    .panel-foot .tip{margin-left:0;}
+  }
+</style>
+{% endblock %}
+
+{% block crumb %}
+        <span>提示词调试</span><span class="sep">/</span>
+        <span class="cur">调试台</span>
+{% endblock %}
+
+{% block content %}
+    <div class="content">
+      <div class="hero">
+        <div>
+          <h1><span>提示词调试</span></h1>
+          <p>选择服务器与模型、填写 api_key 与提示词，一键调试并实时估算输入 / 输出 token 成本。</p>
+          <div class="glow-line"></div>
+        </div>
+      </div>
+
+      <div class="work">
+        <!-- ============ 左列 ============ -->
+        <div class="col">
+
+          <!-- 连接配置 -->
+          <section class="panel">
+            <div class="panel-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 3v6M15 3v6M6 9h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V9zM12 18v3"/>
+              </svg>
+              连接配置
+              <div class="head-right"><span class="out-meta">数据来自「基础信息」</span></div>
+            </div>
+
+            <div class="panel-body">
+              <div class="form-grid">
+                <!-- 服务器下拉列表 -->
+                <div class="field" id="fld-server">
+                  <label for="server">服务器<i class="req">*</i></label>
+                  <div class="select-wrap">
+                    <select class="select ph" id="server" onchange="onServerChange()">
+                      <option value="">请选择服务器</option>
+                    </select>
+                  </div>
+                  <div class="err" id="err-server"></div>
+                </div>
+
+                <!-- Base_url（不可编辑） -->
+                <div class="field">
+                  <label for="baseUrl">Base_url（不可编辑）</label>
+                  <div class="input-wrap">
+                    <input class="input mono" id="baseUrl" type="text" value="" readonly placeholder="选择服务器后自动带出" />
+                    <span class="lock-badge" title="不可编辑">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- api_key（必填） -->
+                <div class="field" id="fld-key">
+                  <label for="apiKey">api_key<i class="req">*</i></label>
+                  <div class="input-wrap">
+                    <input class="input mono" id="apiKey" type="password" placeholder="sk-xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
+                    <button class="icon-btn" type="button" onclick="toggleKey()" title="显示 / 隐藏">
+                      <svg id="eyeIco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/>
+                      </svg>
+                      <svg id="eyeOffIco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                        <path d="M4 4l16 16M9.5 5.4A9.9 9.9 0 0 1 12 5c6.4 0 10 6 10 6a17 17 0 0 1-3.2 3.7M6.3 7.6A17 17 0 0 0 2 11s3.6 6 10 6c1 0 1.9-.1 2.7-.4"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="err" id="err-key"></div>
+                </div>
+
+                <!-- 模型下拉列表 -->
+                <div class="field" id="fld-model">
+                  <label for="model">模型<i class="req">*</i></label>
+                  <div class="select-wrap">
+                    <select class="select ph" id="model" onchange="onModelChange()" disabled>
+                      <option value="">请先选择服务器</option>
+                    </select>
+                  </div>
+                  <div class="err" id="err-model"></div>
+                </div>
+
+                <!-- token 费用标签 -->
+                <div class="field span-2">
+                  <label>token 计费标准</label>
+                  <div class="fee-box" id="feeBox">
+                    <span class="fee-empty" id="feeEmpty">选择模型后显示「输入 token 费用」「输出 token 费用」标签</span>
+                    <span class="fee-tag in" id="feeIn" style="display:none">
+                      <i class="dot"></i>输入 token 费用<b id="feeInVal">—</b><span class="u" id="feeInUnit">/ 百万 tokens</span>
+                    </span>
+                    <span class="fee-tag out" id="feeOut" style="display:none">
+                      <i class="dot"></i>输出 token 费用<b id="feeOutVal">—</b><span class="u" id="feeOutUnit">/ 百万 tokens</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 提示词 -->
+          <section class="panel">
+            <div class="panel-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/>
+              </svg>
+              提示词
+              <div class="head-right"><span class="out-meta">role = system / user</span></div>
+            </div>
+
+            <div class="panel-body">
+              <!-- 系统提示词（必填） -->
+              <div class="field" id="fld-sys">
+                <div class="label-row">
+                  <label for="sysPrompt">系统提示词 · role=system<i class="req">*</i></label>
+                  <button class="mini-btn" type="button" id="btnCopySys" onclick="copySys()" title="复制系统提示词">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9"/>
+                    </svg>
+                    <span id="copySysTxt">复制</span>
+                  </button>
+                </div>
+                <textarea class="textarea" id="sysPrompt" spellcheck="false" placeholder="例如：你是一名严谨的行业分析师，回答要求：先给结论，再分点陈述论据；涉及数据必须标注单位与来源；不要输出与问题无关的内容。"></textarea>
+                <div class="err" id="err-sys"></div>
+              </div>
+
+              <!-- 用户提示词（单轮 / 多轮） -->
+              <div class="field" id="fld-user" style="margin-top:18px">
+                <div class="label-row">
+                  <label for="userPrompt1">用户提示词 · role=user<i class="req">*</i></label>
+                  <label class="switch" title="开启后可追加第 2、3、4… 轮用户提示词">
+                    <input type="checkbox" id="multiTurn" onchange="toggleMulti(this)" />
+                    <span class="track"><i></i></span>
+                    多轮会话
+                  </label>
+                </div>
+
+                <div id="rounds">
+                  <div class="round">
+                    <div class="round-head">
+                      <span class="rno">第 1 轮</span>
+                      <span class="r-hint">必填</span>
+                    </div>
+                    <textarea class="textarea round-input" id="userPrompt1" rows="3" spellcheck="false" placeholder="请输入用户提示词，可见 3 行，超出自动出现滚动条…"></textarea>
+                  </div>
+                </div>
+
+                <div class="round-actions" id="roundActions" style="display:none">
+                  <button class="btn btn-ghost mini" type="button" onclick="addRound()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    添加一轮
+                  </button>
+                  <span class="hint">最多 6 轮，留空的轮次将被忽略</span>
+                </div>
+
+                <div class="err" id="err-user"></div>
+              </div>
+            </div>
+
+            <div class="panel-foot">
+              <button class="btn btn-primary" type="button" id="btnRun" onclick="runDebug()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 4l14 8-14 8V4z"/>
+                </svg>
+                <span id="btnRunTxt">开始调试</span>
+              </button>
+              <button class="btn btn-ghost" type="button" onclick="clearAll()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                清空
+              </button>
+            </div>
+          </section>
+
+        </div>
+        <!-- ============ 右列 ============ -->
+        <div class="col">
+
+          <!-- 模型输出 -->
+          <section class="panel">
+            <div class="panel-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.5-5A8 8 0 1 1 21 12z"/>
+                <path d="M8.5 11h7M8.5 14.5h4"/>
+              </svg>
+              模型输出
+              <div class="head-right">
+                <span class="out-meta" id="outMeta">等待调试</span>
+                <button class="mini-btn" type="button" onclick="copyOut()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9"/>
+                  </svg>
+                  复制
+                </button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <textarea class="textarea mono" id="out" readonly spellcheck="false" placeholder="点击「开始调试」后，模型输出（role=assistant）会显示在这里，内容超出时自动出现滚动条…"></textarea>
+            </div>
+          </section>
+
+          <!-- 指标卡 -->
+          <div class="metrics">
+            <div class="metric">
+              <div class="m-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/><path d="M4 21h16"/>
+                </svg>
+              </div>
+              <div class="m-body">
+                <div class="m-label">输入 token 费用</div>
+                <div class="m-duo">
+                  <div class="m-cell">
+                    <div class="m-cell-k"><i></i>Token 量</div>
+                    <div class="m-cell-v" id="mInTok">—</div>
+                  </div>
+                  <div class="m-cell fee">
+                    <div class="m-cell-k"><i></i>费用</div>
+                    <div class="m-cell-v" id="mIn">—</div>
+                  </div>
+                </div>
+                <div class="m-sub" id="mInSub">尚未调试</div>
+              </div>
+            </div>
+
+            <div class="metric rate">
+              <div class="m-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 7h16v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z"/>
+                  <path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"/>
+                  <circle cx="12" cy="13" r="2.2"/>
+                </svg>
+              </div>
+              <div class="m-body">
+                <div class="m-label">输出 token 计费标准</div>
+                <div class="m-duo">
+                  <div class="m-cell">
+                    <div class="m-cell-k"><i></i>Token 量</div>
+                    <div class="m-cell-v" id="mOutTok">—</div>
+                  </div>
+                  <div class="m-cell fee">
+                    <div class="m-cell-k"><i></i>费用</div>
+                    <div class="m-cell-v" id="mRate">—</div>
+                  </div>
+                </div>
+                <div class="m-sub" id="mRateSub">选择模型后显示单价</div>
+              </div>
+            </div>
+
+            <div class="metric total">
+              <div class="m-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="M9.2 8.5l2.8 3.6 2.8-3.6M12 12.1V16M10.2 13.6h3.6M10.2 15.1h3.6"/>
+                </svg>
+              </div>
+              <div class="m-body">
+                <div class="m-label">总费用</div>
+                <div class="m-duo">
+                  <div class="m-cell">
+                    <div class="m-cell-k"><i></i>总 Token 量</div>
+                    <div class="m-cell-v" id="mTotalTok">—</div>
+                  </div>
+                  <div class="m-cell fee">
+                    <div class="m-cell-k"><i></i>总费用</div>
+                    <div class="m-cell-v" id="mTotal">—</div>
+                  </div>
+                </div>
+                <div class="m-sub" id="mTotalSub">输入费用 + 输出费用</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+{% endblock %}
+{% block page_script %}
+<script>
+  const RUN_URL = "{% url 'basic:prompt_run' %}";
+
+  /* ---------- 菜单展开 / 收起 ---------- */
+  function toggleMenu(id){
+    document.getElementById(id).classList.toggle('open');
+  }
+
+  function el(id){ return document.getElementById(id); }
+
+  /* ---------- 基础数据：来自「基础信息」维护的服务器 / 模型 ---------- */
+  const SERVERS = [
+  {% for srv in servers %}
+    { name:'{{ srv.plat_name|escapejs }}', url:'{{ srv.base_url|escapejs }}', models:[
+      {% for m in srv.ai_models.all %}
+      { name:'{{ m.model_name|escapejs }}', inCost:{{ m.in_price }}, outCost:{{ m.out_price }}, unit:'{{ m.bill_unit|escapejs }}' },
+      {% endfor %}
+    ]},
+  {% endfor %}
+  ];
+
+  /* 计费单位换算：1 个计费单位对应多少 token */
+  const UNIT = { 'K':1000, '万':10000, '十万':100000, '百万':1000000 };
+  const MAX_ROUNDS = 6;
+
+  /* ---------- 通用工具 ---------- */
+  function fmtNum(n){ return Number(n || 0).toLocaleString('en-US'); }
+  /* 计数动画用：token 量按整数展示 */
+  function fmtInt(n){ return fmtNum(Math.round(n)); }
+  function price(v){ return '¥' + Number(v).toFixed(2); }
+  function money(v){
+    if (!isFinite(v)) return '—';
+    if (v >= 10)   return '¥' + v.toFixed(2);
+    if (v >= 1)    return '¥' + v.toFixed(3);
+    if (v >= 0.01) return '¥' + v.toFixed(4);
+    return '¥' + v.toFixed(6);
+  }
+  /* 粗略估算 token：中文按 1.05 token/字，其他字符按 3.6 字符/token */
+  function estimateTokens(text){
+    if (!text) return 0;
+    const cjk = (text.match(/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/g) || []).length;
+    const other = Math.max(0, text.length - cjk);
+    return Math.round(cjk * 1.05 + other / 3.6);
+  }
+  function toast(msg){
+    const box = el('toast');
+    el('toastText').textContent = msg;
+    box.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(function(){ box.classList.remove('show'); }, 2300);
+  }
+  function setErr(fieldId, msg){
+    const fld = el(fieldId);
+    if (fld) fld.classList.add('invalid');
+    const err = el('err-' + fieldId.replace('fld-', ''));
+    if (err) err.textContent = msg;
+  }
+  function clearErr(fieldId){
+    const fld = el(fieldId);
+    if (fld) fld.classList.remove('invalid');
+  }
+
+  /* ---------- 服务器 / 模型联动 ---------- */
+  function currentServer(){
+    return el('server').value === '' ? null : SERVERS[Number(el('server').value)];
+  }
+  function currentModel(){
+    const srv = currentServer();
+    if (!srv || el('model').value === '') return null;
+    return srv.models[Number(el('model').value)] || null;
+  }
+
+  function initServers(){
+    const sel = el('server');
+    SERVERS.forEach(function(s, i){
+      const op = document.createElement('option');
+      op.value = String(i);
+      op.textContent = s.name;
+      sel.appendChild(op);
+    });
+  }
+
+  function onServerChange(){
+    const srv = currentServer();
+    clearErr('fld-server');
+
+    /* base_url 跟随服务器变更（只读） */
+    el('baseUrl').value = srv ? srv.url : '';
+
+    /* 重建模型下拉列表 */
+    const sel = el('model');
+    sel.innerHTML = '';
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = srv ? '请选择模型' : '请先选择服务器';
+    sel.appendChild(ph);
+    sel.classList.add('ph');
+    sel.disabled = !srv;
+    if (srv){
+      srv.models.forEach(function(m, i){
+        const op = document.createElement('option');
+        op.value = String(i);
+        op.textContent = m.name;
+        sel.appendChild(op);
+      });
+    } else {
+      el('server').classList.add('ph');
+    }
+    if (el('server').value !== '') el('server').classList.remove('ph');
+
+    resetFeeTags();
+    resetMetrics();
+  }
+
+  function onModelChange(){
+    const mdl = currentModel();
+    clearErr('fld-model');
+    const sel = el('model');
+    if (sel.value === '') sel.classList.add('ph'); else sel.classList.remove('ph');
+
+    if (!mdl){
+      resetFeeTags();
+      resetMetrics();
+      return;
+    }
+
+    /* 选中模型后显示输入 / 输出 token 费用标签 */
+    el('feeEmpty').style.display = 'none';
+    el('feeIn').style.display  = 'inline-flex';
+    el('feeOut').style.display = 'inline-flex';
+    el('feeInVal').textContent  = price(mdl.inCost);
+    el('feeInUnit').textContent = '/ ' + mdl.unit + ' tokens';
+    el('feeOutVal').textContent  = price(mdl.outCost);
+    el('feeOutUnit').textContent = '/ ' + mdl.unit + ' tokens';
+
+    /* 指标卡：token 量与费用并列展示，选中模型后先给出输入 / 输出单价 */
+    ['mInTok', 'mIn', 'mOutTok', 'mRate', 'mTotalTok', 'mTotal'].forEach(function(id){
+      el(id).textContent = '—';
+    });
+    el('mInSub').textContent    = '单价 ' + price(mdl.inCost)  + ' / ' + mdl.unit + ' tokens · 尚未调试';
+    el('mRateSub').textContent  = '单价 ' + price(mdl.outCost) + ' / ' + mdl.unit + ' tokens · 尚未调试';
+    el('mTotalSub').textContent = '输入费用 + 输出费用';
+
+    updateCounts();
+  }
+
+  function resetFeeTags(){
+    el('feeEmpty').style.display = '';
+    el('feeIn').style.display  = 'none';
+    el('feeOut').style.display = 'none';
+  }
+
+  /* 指标卡重置：token 量与费用同时清空 */
+  function resetMetrics(){
+    ['mInTok', 'mIn', 'mOutTok', 'mRate', 'mTotalTok', 'mTotal'].forEach(function(id){
+      el(id).textContent = '—';
+    });
+    el('mInSub').textContent = '尚未调试';
+    el('mRateSub').textContent = '选择模型后显示单价';
+    el('mTotalSub').textContent = '输入费用 + 输出费用';
+  }
+
+  /* ---------- 多轮会话 ---------- */
+  function roundEls(){
+    return Array.prototype.slice.call(el('rounds').querySelectorAll('.round'));
+  }
+  function visibleRounds(){
+    return roundEls().filter(function(r){ return r.style.display !== 'none'; });
+  }
+  function renumberRounds(){
+    roundEls().forEach(function(r, i){
+      r.querySelector('.rno').textContent = '第 ' + (i + 1) + ' 轮';
+      const hint = r.querySelector('.r-hint');
+      if (hint) hint.textContent = i === 0 ? '必填' : '';
+    });
+  }
+  function bindRound(round){
+    const ta = round.querySelector('.round-input');
+    ta.addEventListener('input', function(){
+      clearErr('fld-user');
+      updateCounts();
+    });
+    const del = round.querySelector('.round-del');
+    if (del){
+      del.addEventListener('click', function(){
+        round.remove();
+        renumberRounds();
+        updateCounts();
+        toast('已删除该轮用户提示词');
+      });
+    }
+  }
+
+  function buildRound(n){
+    const wrap = document.createElement('div');
+    wrap.className = 'round';
+    wrap.innerHTML =
+      '<div class="round-head">' +
+        '<span class="rno"></span>' +
+        '<button class="round-del" type="button" title="删除本轮">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M6 6l12 12M18 6L6 18"/></svg>删除' +
+        '</button>' +
+      '</div>' +
+      '<textarea class="textarea round-input" rows="3" spellcheck="false" ' +
+        'placeholder="请输入第 ' + n + ' 轮用户提示词（role=user），可见 3 行…"></textarea>';
+    return wrap;
+  }
+
+  function addRound(){
+    const multi = el('multiTurn').checked;
+    if (!multi){
+      el('multiTurn').checked = true;
+      toggleMulti(el('multiTurn'));
+    }
+    if (roundEls().length >= MAX_ROUNDS){
+      toast('原型最多支持 ' + MAX_ROUNDS + ' 轮会话');
+      return;
+    }
+    const n = roundEls().length + 1;
+    const round = buildRound(n);
+    el('rounds').appendChild(round);
+    bindRound(round);
+    renumberRounds();
+    round.querySelector('.round-input').focus();
+    updateCounts();
+  }
+
+  function toggleMulti(box){
+    const rounds = roundEls();
+    rounds.forEach(function(r, i){
+      if (i > 0) r.style.display = box.checked ? '' : 'none';
+    });
+    el('roundActions').style.display = box.checked ? '' : 'none';
+
+    if (box.checked){
+      if (rounds.length < 2) addRound();
+      else toast('已开启多轮会话，可继续添加轮次');
+    } else {
+      if (rounds.length > 1) toast('已切换为单轮会话，第 2 轮及之后的内容暂不参与调试');
+    }
+    updateCounts();
+  }
+
+  /* ---------- 输入统计 ---------- */
+  function estimateInputTokens(){
+    let text = el('sysPrompt').value;
+    visibleRounds().forEach(function(r){
+      text += '\n' + r.querySelector('.round-input').value;
+    });
+    return estimateTokens(text);
+  }
+  function updateCounts(){
+    const sys = el('sysPrompt').value;
+    if (el('sysCount')) el('sysCount').textContent = sys.length;
+    if (el('sysTok'))   el('sysTok').textContent = fmtNum(estimateTokens(sys));
+    if (el('estIn'))    el('estIn').textContent = fmtNum(estimateInputTokens());
+  }
+
+  /* ---------- 调试：逐轮调用模型，「模型输出」显示每次调用的输出 ---------- */
+  function countTo(id, to, fmt, dur){
+    const node = el(id);
+    const t0 = performance.now();
+    function step(t){
+      const k = Math.min(1, (t - t0) / dur);
+      const eased = 1 - Math.pow(1 - k, 3);
+      node.textContent = fmt(to * eased);
+      if (k < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* 参与调试的轮次：留空的轮次按原型规则忽略 */
+  function activeRounds(){
+    return visibleRounds()
+      .map(function(r){ return r.querySelector('.round-input').value.trim(); })
+      .filter(function(text){ return text !== ''; });
+  }
+
+  /* 输出框内容：单轮即模型输出；多轮按轮次分段，便于区分每次调用的输出 */
+  function outputsText(outputs){
+    if (outputs.length > 1){
+      return outputs.map(function(t, i){ return '【第 ' + (i + 1) + ' 轮】\n' + t; }).join('\n\n');
+    }
+    return outputs[0] || '';
+  }
+
+  function runDebug(){
+    const srv = currentServer();
+    const mdl = currentModel();
+    const key = el('apiKey').value.trim();
+    const sys = el('sysPrompt').value.trim();
+    const first = el('userPrompt1').value.trim();
+
+    let ok = true;
+    if (!srv){ setErr('fld-server', '请选择服务器'); ok = false; } else clearErr('fld-server');
+    if (!mdl){ setErr('fld-model', '请选择模型'); ok = false; } else clearErr('fld-model');
+    if (!key){ setErr('fld-key', 'api_key 为必填项'); ok = false; } else clearErr('fld-key');
+    if (!sys){ setErr('fld-sys', '系统提示词为必填项'); ok = false; } else clearErr('fld-sys');
+    if (!first){ setErr('fld-user', '请填写第 1 轮用户提示词'); ok = false; } else clearErr('fld-user');
+    if (!ok){ toast('请先补全带 * 的必填项'); return; }
+
+    const rounds = activeRounds();
+    const emptyRounds = visibleRounds().length - rounds.length;
+
+    const btn = el('btnRun');
+    btn.disabled = true;
+    btn.classList.add('running');
+    el('btnRunTxt').textContent = '调试中…';
+    el('outMeta').textContent = '请求中…';
+    el('out').value = '正在调用 ' + srv.name + ' / ' + mdl.name + ' …';
+
+    const t0 = performance.now();
+    const messages = [{ role: 'system', content: sys }];
+    const outputs = [];
+
+    /* 每轮调用一次模型：输出写入输出框，并把回复作为 assistant 消息带入下一轮 */
+    function callRound(i){
+      messages.push({ role: 'user', content: rounds[i] });
+
+      postJson(RUN_URL, {
+        srv_name:   srv.name,
+        model_name: mdl.name,
+        api_key:    key,
+        messages:   messages
+      }).then(function (data){
+        if (!data.ok){ finish(data.error || '调用失败，请重试'); return; }
+
+        outputs.push(data.content || '');
+        messages.push({ role: 'assistant', content: data.content || '' });
+        el('out').value = outputsText(outputs);
+        el('out').scrollTop = 0;
+
+        if (i + 1 < rounds.length) callRound(i + 1);
+        else finish('');
+      }).catch(function (){
+        finish('调用失败，请检查网络与接口地址是否可用');
+      });
+    }
+
+    function finish(error){
+      const body   = outputsText(outputs);
+      const inTok  = estimateInputTokens();
+      const outTok = estimateTokens(body);
+      const factor = UNIT[mdl.unit] || 1000000;
+      const feeIn  = inTok  / factor * mdl.inCost;
+      const feeOut = outTok / factor * mdl.outCost;
+      const total  = feeIn + feeOut;
+
+      btn.disabled = false;
+      btn.classList.remove('running');
+      el('btnRunTxt').textContent = '开始调试';
+
+      if (error){
+        el('out').value = body;
+        el('outMeta').textContent = '调用失败';
+        toast(error);
+        return;
+      }
+
+      el('outMeta').textContent = '用时 ' + Math.round(performance.now() - t0) + ' ms · 输出 ' + fmtNum(outTok) + ' tokens';
+
+      countTo('mInTok', inTok, fmtInt, 600);
+      countTo('mIn', feeIn, money, 600);
+      el('mInSub').textContent = '单价 ' + price(mdl.inCost) + ' / ' + mdl.unit + ' tokens';
+      countTo('mOutTok', outTok, fmtInt, 700);
+      countTo('mRate', feeOut, money, 700);
+      el('mRateSub').textContent = '单价 ' + price(mdl.outCost) + ' / ' + mdl.unit + ' tokens';
+      countTo('mTotalTok', inTok + outTok, fmtInt, 760);
+      countTo('mTotal', total, money, 760);
+      el('mTotalSub').textContent = '输入 ' + money(feeIn) + ' + 输出 ' + money(feeOut);
+
+      if (emptyRounds > 0) toast('调试完成，' + emptyRounds + ' 个空白轮次已忽略');
+      else toast('调试完成 · 合计 ' + money(total));
+    }
+
+    callRound(0);
+  }
+
+  function clearAll(){
+    el('sysPrompt').value = '';
+    roundEls().forEach(function(r, i){ if (i > 0) r.remove(); });
+    el('userPrompt1').value = '';
+    el('multiTurn').checked = false;
+    el('rounds').querySelectorAll('.round').forEach(function(r){ r.style.display = ''; });
+    el('roundActions').style.display = 'none';
+    renumberRounds();
+
+    el('out').value = '';
+    el('outMeta').textContent = '等待调试';
+    resetMetrics();
+    ['fld-server', 'fld-model', 'fld-key', 'fld-sys', 'fld-user'].forEach(clearErr);
+    updateCounts();
+    toast('已清空调试内容');
+  }
+
+  /* 统一复制入口：无内容 / 成功 / 失败均给出提示 */
+  function copyText(text, okMsg, emptyMsg){
+    if (!text){ toast(emptyMsg); return false; }
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){
+        toast(okMsg);
+      }, function(){
+        toast('复制失败，请手动选中后复制');
+      });
+    } else {
+      toast('当前环境不支持自动复制，请手动选中后复制');
+    }
+    return true;
+  }
+
+  /* 复制系统提示词（右上角按钮） */
+  function copySys(){
+    const text = el('sysPrompt').value.trim();
+    if (!copyText(text, '已复制系统提示词', '系统提示词为空，暂无可复制的内容')) return;
+    const btn = el('btnCopySys');
+    const txt = el('copySysTxt');
+    txt.textContent = '已复制';
+    btn.classList.add('copied');
+    clearTimeout(copySys._timer);
+    copySys._timer = setTimeout(function(){
+      txt.textContent = '复制';
+      btn.classList.remove('copied');
+    }, 1600);
+  }
+
+  function copyOut(){
+    copyText(el('out').value, '已复制模型输出', '暂无可复制的内容');
+  }
+
+  function toggleKey(){
+    const input = el('apiKey');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    el('eyeIco').style.display = show ? 'none' : '';
+    el('eyeOffIco').style.display = show ? '' : 'none';
+    input.focus();
+  }
+
+  /* ---------- 初始化 ---------- */
+  initServers();
+  el('sysPrompt').addEventListener('input', function(){ clearErr('fld-sys'); updateCounts(); });
+  el('apiKey').addEventListener('input', function(){ clearErr('fld-key'); updateCounts(); });
+
+  /* 用统一入口绑定初始轮次 */
+  (function bindInitialRounds(){
+    roundEls().forEach(bindRound);
+    renumberRounds();
+    updateCounts();
+  })();
+
+  document.addEventListener('keydown', function(e){
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+      e.preventDefault();
+      runDebug();
+    }
+  });
+</script>
+{% endblock %}

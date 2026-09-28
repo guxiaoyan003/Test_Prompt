@@ -1,0 +1,758 @@
+{% extends 'basic/base.html' %}
+
+{% block title %}服务器列表 · Test_Prompt{% endblock %}
+
+{% block page_style %}
+<style>
+  :root{
+    --bg:#060a12;
+    --panel:rgba(13,21,36,.86);
+    --line:#1c2a44;
+    --line-soft:rgba(120,160,220,.12);
+    --text:#e6f1ff;
+    --text-dim:#9db0d4;
+    --muted:#6f83a8;
+    --cyan:#22d3ee;
+    --blue:#3b82f6;
+    --violet:#8b5cf6;
+    --danger:#ef4444;
+    --ok:#34d399;
+    --radius:14px;
+    --shadow:0 18px 48px rgba(2,8,20,.55);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    color:var(--text);
+    background:
+      radial-gradient(1100px 620px at 12% -10%, rgba(34,211,238,.16), transparent 60%),
+      radial-gradient(900px 560px at 96% 4%, rgba(139,92,246,.16), transparent 62%),
+      radial-gradient(700px 700px at 60% 120%, rgba(59,130,246,.12), transparent 60%),
+      var(--bg);
+    font-family:"Segoe UI","Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif;
+    font-size:14px;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(120,170,255,.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,170,255,.055) 1px, transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(circle at 50% 22%, #000 30%, transparent 88%);
+    mask-image:radial-gradient(circle at 50% 22%, #000 30%, transparent 88%);
+  }
+
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;}
+
+  /* ============ 布局 ============ */
+  .app{position:relative;z-index:1;display:flex;height:100vh;overflow:hidden;}
+
+  /* ============ 左侧菜单 ============ */
+  .sidebar{
+    width:252px;flex:0 0 252px;display:flex;flex-direction:column;
+    background:linear-gradient(180deg, rgba(11,18,32,.96), rgba(6,10,18,.96));
+    border-right:1px solid var(--line);
+    backdrop-filter:blur(6px);
+  }
+  .brand{
+    display:flex;align-items:center;gap:11px;
+    padding:17px 18px;border-bottom:1px solid var(--line);
+  }
+  .brand .logo{
+    width:38px;height:38px;border-radius:11px;flex:0 0 38px;
+    display:grid;place-items:center;
+    background:linear-gradient(140deg, rgba(34,211,238,.95), rgba(59,130,246,.9) 55%, rgba(139,92,246,.92));
+    box-shadow:0 0 0 1px rgba(140,220,255,.35), 0 8px 22px rgba(34,211,238,.35);
+  }
+  .brand .logo svg{width:21px;height:21px;stroke:#04121f;}
+  .brand .title{
+    font-size:17px;font-weight:700;letter-spacing:.4px;
+    background:linear-gradient(90deg,#e8f7ff,#67e8f9 60%,#a78bfa);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .brand .sub{font-size:11px;color:var(--muted);letter-spacing:1.1px;text-transform:uppercase;margin-top:2px;}
+
+  .nav{flex:1;overflow:auto;padding:12px 10px 22px;}
+  .nav::-webkit-scrollbar{width:8px;}
+  .nav::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:8px;}
+
+  .nav-label{
+    font-size:11px;letter-spacing:1.6px;color:var(--muted);
+    text-transform:uppercase;padding:10px 12px 8px;
+  }
+
+  .m1{margin-bottom:4px;}
+  .m1 > .m1-head,
+  .m2 > .m2-head{
+    display:flex;align-items:center;gap:10px;width:100%;
+    background:transparent;border:0;color:var(--text-dim);
+    padding:10px 12px;border-radius:10px;cursor:pointer;
+    font-size:13.5px;text-align:left;transition:.18s;
+  }
+  .m1 > .m1-head:hover,
+  .m2 > .m2-head:hover{background:rgba(120,170,255,.07);color:#dceaff;}
+  .m1 > .m1-head .ico{width:16px;height:16px;opacity:.85;}
+  .m2 > .m2-head .ico{width:14px;height:14px;opacity:.7;}
+  .m1 > .m1-head .txt,.m2 > .m2-head .txt{flex:1;}
+  .chev{width:14px;height:14px;transition:transform .2s;}
+  .open > .m1-head .chev,.open > .m2-head .chev{transform:rotate(90deg);}
+
+  .m2-wrap,.m3-wrap{display:none;}
+  .open > .m2-wrap{display:block;}
+  .m2.open > .m3-wrap{display:block;}
+
+  .m2{margin:2px 0 2px 6px;}
+  .m2 > .m2-head{padding:9px 12px;font-size:13px;}
+
+  .m3{margin:1px 0 1px 10px;border-left:1px solid var(--line);padding-left:6px;}
+  .m3 a{
+    display:flex;align-items:center;gap:9px;
+    padding:8px 12px;border-radius:9px;color:var(--muted);font-size:12.5px;
+    transition:.18s;position:relative;
+  }
+  .m3 a .dot{width:5px;height:5px;border-radius:50%;background:#2b3d5c;transition:.18s;}
+  .m3 a:hover{color:#dceaff;background:rgba(120,170,255,.07);}
+  .m3 a:hover .dot{background:#5f7ea8;}
+  .m3 a.active{
+    color:#eafcff;background:linear-gradient(90deg, rgba(34,211,238,.16), rgba(34,211,238,.02));
+    box-shadow:inset 0 0 0 1px rgba(34,211,238,.28);
+  }
+  .m3 a.active .dot{background:var(--cyan);box-shadow:0 0 9px var(--cyan);}
+  .m3 a.active::before{
+    content:"";position:absolute;left:-7px;top:50%;transform:translateY(-50%);
+    width:2px;height:16px;background:var(--cyan);border-radius:2px;box-shadow:0 0 10px var(--cyan);
+  }
+  /* ============ 右侧主区 ============ */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+
+  .topbar{
+    height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(13,21,36,.75), rgba(13,21,36,.25));
+    backdrop-filter:blur(8px);
+  }
+  .crumbs{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+  .crumbs .sep{opacity:.45;}
+  .crumbs .cur{color:#e8f7ff;font-weight:600;}
+  .topbar .right{display:flex;align-items:center;gap:14px;}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#b8e9f5;
+    padding:6px 12px;border-radius:999px;background:rgba(34,211,238,.08);
+    border:1px solid rgba(34,211,238,.28);
+  }
+  .pulse{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .avatar{
+    width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;
+    color:#04121f;background:linear-gradient(135deg,#67e8f9,#818cf8);
+  }
+
+  .content{flex:1;overflow:auto;padding:20px 22px 26px;}
+  .content::-webkit-scrollbar{width:10px;}
+  .content::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:10px;}
+
+  .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:16px;}
+  .hero h1{margin:0;font-size:20px;letter-spacing:.5px;}
+  .hero h1 span{
+    background:linear-gradient(90deg,#eafcff,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero p{margin:7px 0 0;font-size:12.5px;color:var(--muted);}
+  .hero .glow-line{
+    height:2px;width:120px;margin-top:12px;border-radius:2px;
+    background:linear-gradient(90deg,var(--cyan),rgba(139,92,246,0));
+    box-shadow:0 0 14px rgba(34,211,238,.7);
+  }
+
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);overflow:hidden;
+  }
+  .panel::before{
+    content:"";display:block;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(34,211,238,.55),rgba(139,92,246,.45),transparent);
+  }
+
+  /* 搜索 + 操作区 */
+  .toolbar{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    padding:16px 18px;border-bottom:1px solid var(--line-soft);
+    background:linear-gradient(180deg, rgba(255,255,255,.02), transparent);
+  }
+  .filters{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field label{font-size:12px;color:var(--muted);letter-spacing:.3px;}
+  .input{
+    width:212px;height:38px;padding:0 13px;border-radius:9px;
+    background:#0a1322;border:1px solid #21354f;color:var(--text);font-size:13px;
+    transition:.18s;outline:none;
+  }
+  .input::placeholder{color:#4d6187;}
+  .input:focus{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.13);background:#0b1626;}
+
+  .btn{
+    height:38px;padding:0 16px;border-radius:9px;font-size:13px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;justify-content:center;
+    border:1px solid transparent;transition:.18s;white-space:nowrap;
+  }
+  .btn svg{width:15px;height:15px;}
+  .btn-primary{
+    background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#03131f;font-weight:700;
+    box-shadow:0 8px 22px rgba(34,211,238,.28);
+  }
+  .btn-primary:hover{filter:brightness(1.08);box-shadow:0 10px 26px rgba(34,211,238,.4);}
+  .btn-ghost{background:#101c2e;border-color:#23385a;color:#cfe2ff;}
+  .btn-ghost:hover{border-color:rgba(34,211,238,.6);color:#eafcff;background:#122238;}
+  .btn-ghost:disabled{opacity:.4;cursor:not-allowed;border-color:#243447;color:#7d8ba3;background:#101c2e;}
+  .btn-danger{
+    background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.5);color:#ffb4b4;
+  }
+  .btn-danger:hover:not(:disabled){background:rgba(239,68,68,.22);color:#fff;box-shadow:0 8px 20px rgba(239,68,68,.25);}
+  .btn-danger:disabled{
+    opacity:.4;cursor:not-allowed;background:rgba(255,255,255,.03);
+    border-color:#243447;color:#7d8ba3;box-shadow:none;
+  }
+  .actions{display:flex;align-items:center;gap:10px;}
+  /* 表格 */
+  .table-wrap{overflow:auto;}
+  .table-wrap::-webkit-scrollbar{height:10px;width:10px;}
+  .table-wrap::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:10px;}
+  table{width:100%;border-collapse:collapse;min-width:760px;}
+  thead th{
+    position:sticky;top:0;z-index:2;
+    text-align:left;font-size:12px;font-weight:600;letter-spacing:.8px;color:#8ea3c8;
+    padding:12px 16px;background:#0c1626;border-bottom:1px solid var(--line);
+  }
+  tbody td{
+    padding:14px 16px;font-size:13.5px;border-bottom:1px solid rgba(120,160,220,.09);
+    color:var(--text-dim);vertical-align:middle;
+  }
+  tbody tr{transition:.15s;}
+  tbody tr:hover{background:rgba(34,211,238,.045);}
+  tbody tr.checked{background:rgba(34,211,238,.07);}
+  tbody tr:last-child td{border-bottom:0;}
+  .col-check{width:52px;}
+  .col-name{width:26%;}
+  .col-company{width:22%;}
+
+  input[type="checkbox"]{
+    width:16px;height:16px;accent-color:#22d3ee;cursor:pointer;
+    vertical-align:middle;filter:drop-shadow(0 0 5px rgba(34,211,238,.35));
+  }
+  .lnk{
+    color:#67e8f9;font-weight:600;position:relative;
+    border-bottom:1px dashed rgba(103,232,249,.45);padding-bottom:1px;transition:.18s;
+  }
+  .lnk:hover{color:#c8f8ff;border-bottom-color:#67e8f9;text-shadow:0 0 12px rgba(34,211,238,.6);}
+  .lnk .ext{opacity:.5;font-size:11px;margin-left:3px;}
+  .lnk.off{color:var(--text-dim);border-bottom-color:rgba(120,160,220,.28);cursor:default;}
+  .lnk.off:hover{color:var(--text-dim);border-bottom-color:rgba(120,160,220,.28);text-shadow:none;}
+  .api{
+    font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:12.5px;color:#9fb6dc;
+    background:rgba(10,19,34,.75);border:1px solid #1d2f4b;border-radius:7px;
+    padding:5px 10px;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .badge{
+    display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;margin-left:8px;
+    color:#a5f3fc;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.28);vertical-align:middle;
+  }
+  .empty{display:none;padding:56px 20px;text-align:center;color:var(--muted);}
+  .empty svg{width:44px;height:44px;opacity:.5;margin-bottom:12px;}
+  .empty p{margin:0;font-size:13px;}
+
+  /* 底部状态栏 */
+  .panel-foot{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:12px 18px;border-top:1px solid var(--line-soft);background:rgba(255,255,255,.015);
+    font-size:12.5px;color:var(--muted);
+  }
+  .panel-foot b{color:#8ff0ff;font-weight:600;}
+  .pager{display:flex;align-items:center;gap:6px;}
+  .pager button{
+    min-width:30px;height:30px;padding:0 9px;border-radius:8px;cursor:pointer;font-size:12.5px;
+    background:#0f1c2e;border:1px solid #22375a;color:#a9bfe2;transition:.16s;
+  }
+  .pager button:hover:not(:disabled){border-color:rgba(34,211,238,.6);color:#eafcff;}
+  .pager button.on{background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#03131f;font-weight:700;border-color:transparent;}
+  .pager button:disabled{opacity:.35;cursor:not-allowed;}
+
+  /* ============ 确认弹窗 ============ */
+  .modal-mask{
+    position:fixed;inset:0;z-index:50;display:none;place-items:center;
+    background:rgba(3,7,14,.72);backdrop-filter:blur(5px);
+  }
+  .modal-mask.show{display:grid;}
+  .modal{
+    width:min(430px,92vw);border-radius:16px;padding:22px 24px 20px;
+    background:linear-gradient(180deg,#101c30,#0b1424);
+    border:1px solid rgba(239,68,68,.35);
+    box-shadow:0 26px 70px rgba(0,0,0,.65), 0 0 0 1px rgba(34,211,238,.08) inset;
+    animation:pop .18s ease-out;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+  .modal h3{margin:0 0 10px;font-size:16px;display:flex;align-items:center;gap:10px;}
+  .modal h3 .warn{
+    width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex:0 0 32px;
+    background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.4);color:#fca5a5;
+  }
+  .modal h3 .warn svg{width:17px;height:17px;}
+  .modal p{margin:0;font-size:13px;line-height:1.7;color:#a9bfe2;}
+  .modal .target{
+    margin:12px 0 4px;padding:10px 12px;border-radius:9px;font-size:12.5px;color:#bff3ff;
+    background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.22);
+    max-height:120px;overflow:auto;
+  }
+  .modal .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+
+  /* ============ 编辑弹窗（字段与「添加服务器」一致） ============ */
+  .modal.form{width:min(620px,94vw);max-height:88vh;overflow:auto;border-color:rgba(34,211,238,.32);}
+  .modal h3 .info{
+    width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex:0 0 32px;
+    background:rgba(34,211,238,.13);border:1px solid rgba(34,211,238,.38);color:#67e8f9;
+  }
+  .modal h3 .info svg{width:17px;height:17px;}
+  .modal .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px;}
+  .modal .input{width:100%;}
+  .modal .input.mono{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:12.5px;}
+  .modal .req{color:#f87171;font-style:normal;margin-left:3px;}
+  .modal .field .err{display:none;margin-top:7px;font-size:11.5px;color:#fca5a5;}
+  .modal .field.invalid .err{display:block;}
+  .modal .field.invalid > .input{border-color:rgba(239,68,68,.7);box-shadow:0 0 0 3px rgba(239,68,68,.12);}
+  @media (max-width:700px){.modal .form-grid{grid-template-columns:minmax(0,1fr);}}
+
+  /* ============ Toast ============ */
+  .toast{
+    position:fixed;right:24px;bottom:24px;z-index:60;
+    display:flex;align-items:center;gap:10px;
+    padding:12px 16px;border-radius:11px;font-size:13px;color:#d9fbff;
+    background:linear-gradient(180deg,rgba(13,28,44,.97),rgba(9,18,32,.97));
+    border:1px solid rgba(34,211,238,.4);box-shadow:0 16px 40px rgba(0,0,0,.5);
+    opacity:0;transform:translateY(14px);pointer-events:none;transition:.25s;
+  }
+  .toast.show{opacity:1;transform:none;}
+  .toast svg{width:16px;height:16px;color:var(--ok);}
+
+  @media (max-width:900px){
+    .sidebar{width:210px;flex-basis:210px;}
+    .input{width:100%;min-width:150px;}
+    .field{flex:1 1 150px;}
+  }
+</style>
+{% endblock %}
+
+{% block crumb %}
+
+        <span>基础信息</span><span class="sep">/</span>
+        <span>模型服务器</span><span class="sep">/</span>
+        <span class="cur">服务器列表</span>
+      
+{% endblock %}
+
+{% block content %}
+    <div class="content">
+      <div class="hero">
+        <div>
+          <h1><span>服务器列表</span></h1>
+          <p>维护各平台 / 官方 API 的 base_url 与归属公司，供提示词调试时选择模型来源。</p>
+          <div class="glow-line"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <!-- 搜索 + 操作 -->
+        <div class="toolbar">
+          <div class="filters">
+            <div class="field">
+              <label for="f-platform">平台 / 官方名</label>
+              <input class="input" id="f-platform" type="text" value="{{ f_platform }}" placeholder="如：OpenAI、硅基流动" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="f-company">公司名</label>
+              <input class="input" id="f-company" type="text" value="{{ f_company }}" placeholder="如：深度求索、阿里云" autocomplete="off" />
+            </div>
+            <button class="btn btn-primary" type="button" onclick="doSearch()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
+              搜索
+            </button>
+            <button class="btn btn-ghost" type="button" onclick="doReset()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              重置
+            </button>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-ghost" type="button" id="btnEdit" onclick="openEdit()" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19h4L19 8l-3-3L5 16v3z"/><path d="M15 6l3 3"/>
+              </svg>
+              编辑
+            </button>
+            <button class="btn btn-danger" type="button" id="btnDelete" onclick="askDelete()" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>
+              </svg>
+              删除
+            </button>
+            <a class="btn btn-primary" href="{% url 'basic:server_add' %}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              添加服务器
+            </a>
+          </div>
+        </div>
+
+        <!-- 表格 -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="checkAll" onclick="toggleAll(this)" title="全选 / 取消全选" /></th>
+                <th class="col-name">平台 / 官方名</th>
+                <th class="col-company">公司名</th>
+                <th>api 接口</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              {% for srv in servers %}
+              <tr data-platform="{{ srv.plat_name }}" data-base-url="{{ srv.base_url }}" data-company="{{ srv.comp_name|default:'' }}" data-home-url="{{ srv.home_url|default:'' }}" data-id="{{ srv.id }}">
+                <td class="col-check"><input type="checkbox" class="row-check" onclick="onRowCheck(this)" /></td>
+                <td>{% if srv.home_url %}<a class="lnk" href="{{ srv.home_url }}" target="_blank" rel="noopener" title="打开平台首页">{{ srv.plat_name }}<span class="ext">↗</span></a>{% else %}<span class="lnk off" title="未登记平台首页">{{ srv.plat_name }}</span>{% endif %}{% if srv.is_aggregator %}<span class="badge">聚合平台</span>{% endif %}</td>
+                <td>{% if srv.comp_name and srv.home_url %}<a class="lnk" href="{{ srv.home_url }}" target="_blank" rel="noopener" title="打开平台首页">{{ srv.comp_name }}<span class="ext">↗</span></a>{% elif srv.comp_name %}<span class="lnk off" title="未登记平台首页">{{ srv.comp_name }}</span>{% endif %}</td>
+                <td><span class="api" title="{{ srv.base_url }}">{{ srv.base_url }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="empty" id="empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/><path d="M8.5 11h5"/>
+          </svg>
+          <p>没有匹配的服务器，试试调整搜索条件或点击“重置”。</p>
+        </div>
+
+        <div class="panel-foot">
+          <div>共 <b id="total">0</b> 条记录 · 已选 <b id="selCount">0</b> 项</div>
+          <div class="pager">
+            <button type="button" disabled>上一页</button>
+            <button type="button" class="on">1</button>
+            <button type="button">2</button>
+            <button type="button">3</button>
+            <button type="button">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+{% endblock %}
+{% block overlays %}
+<!-- ================= 删除确认弹窗 ================= -->
+<div class="modal-mask" id="delMask">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+    <h3 id="delTitle">
+      <span class="warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 4l9 16H3l9-16z"/><path d="M12 10v4M12 17.5h.01"/>
+        </svg>
+      </span>
+      确认删除
+    </h3>
+    <p>删除后该服务器下的凭证与模型关联将失效，是否确定删除以下服务器？</p>
+    <div class="target" id="delTarget"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeDelete()">取消</button>
+      <button class="btn btn-danger" type="button" onclick="confirmDelete()" style="border-color:rgba(239,68,68,.6)">确定删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 编辑服务器弹窗（字段与「添加服务器」一致） ================= -->
+<div class="modal-mask" id="editMask">
+  <div class="modal form" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <h3 id="editTitle">
+      <span class="info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19h4L19 8l-3-3L5 16v3z"/><path d="M15 6l3 3"/>
+        </svg>
+      </span>
+      编辑服务器
+    </h3>
+    <p>字段与「添加服务器」一致，保存后立即生效。</p>
+    <div class="target" id="editTarget"></div>
+
+    <div class="form-grid">
+      <!-- 平台 / 官方名 -->
+      <div class="field" id="efld-platform">
+        <label for="e-platform">平台 / 官方名<i class="req">*</i></label>
+        <input class="input" id="e-platform" type="text" placeholder="选择或输入平台名" autocomplete="off" />
+        <div class="err" id="eerr-platform"></div>
+      </div>
+
+      <!-- api 网址 -->
+      <div class="field" id="efld-baseUrl">
+        <label for="e-baseUrl">api 网址（base_url）<i class="req">*</i></label>
+        <input class="input mono" id="e-baseUrl" type="text" placeholder="https://api.siliconflow.cn/v1" autocomplete="off" />
+        <div class="err" id="eerr-baseUrl"></div>
+      </div>
+
+      <!-- 公司名 -->
+      <div class="field" id="efld-company">
+        <label for="e-company">公司名</label>
+        <input class="input" id="e-company" type="text" placeholder="如：北京硅基流动科技" autocomplete="off" />
+        <div class="err" id="eerr-company"></div>
+      </div>
+
+      <!-- 首页 -->
+      <div class="field" id="efld-home">
+        <label for="e-home">首页</label>
+        <input class="input mono" id="e-home" type="text" placeholder="https://www.siliconflow.cn" autocomplete="off" />
+        <div class="err" id="eerr-home"></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeEdit()">取消</button>
+      <button class="btn btn-primary" type="button" onclick="confirmEdit()">保存</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_script %}
+<script>
+  const LIST_URL   = "{% url 'basic:server_list' %}";
+  const DELETE_URL = "{% url 'basic:server_delete' %}";
+  const UPDATE_URL = "{% url 'basic:server_update' %}";
+
+  /* ---------- 表格状态与筛选 ---------- */
+  const tbody      = document.getElementById('tbody');
+  const checkAll   = document.getElementById('checkAll');
+  const btnEdit    = document.getElementById('btnEdit');
+  const btnDelete  = document.getElementById('btnDelete');
+  const emptyBox   = document.getElementById('empty');
+  const totalEl    = document.getElementById('total');
+  const selCountEl = document.getElementById('selCount');
+
+  const allRows = () => Array.from(tbody.querySelectorAll('tr'));
+  const rows    = () => allRows().filter(tr => tr.style.display !== 'none');
+  const checkedRows = () => rows().filter(tr => tr.querySelector('.row-check').checked);
+
+  function refresh(){
+    const visible = rows();
+    const checked = checkedRows();
+    const allChecked = visible.length > 0 && checked.length === visible.length;
+
+    checkAll.checked = allChecked;
+    checkAll.indeterminate = checked.length > 0 && !allChecked;
+
+    btnEdit.disabled = checked.length === 0;
+    btnDelete.disabled = checked.length === 0;
+    totalEl.textContent = visible.length;
+    selCountEl.textContent = checked.length;
+    emptyBox.style.display = visible.length === 0 ? 'block' : 'none';
+  }
+
+  function toggleAll(box){
+    rows().forEach(tr => {
+      tr.querySelector('.row-check').checked = box.checked;
+      tr.classList.toggle('checked', box.checked);
+    });
+    refresh();
+  }
+
+  function onRowCheck(box){
+    box.closest('tr').classList.toggle('checked', box.checked);
+    refresh();
+  }
+
+  /* ---------- 搜索 / 重置：交给服务端检索 ---------- */
+  function doSearch(){
+    const p = document.getElementById('f-platform').value.trim();
+    const c = document.getElementById('f-company').value.trim();
+
+    const qs = new URLSearchParams();
+    if (p) qs.set('platform', p);
+    if (c) qs.set('company', c);
+
+    const query = qs.toString();
+    location.href = LIST_URL + (query ? '?' + query : '');
+  }
+
+  function doReset(){
+    location.href = LIST_URL;
+  }
+
+  ['f-platform','f-company'].forEach(function(id){
+    document.getElementById(id).addEventListener('keydown', function(e){
+      if (e.key === 'Enter') doSearch();
+    });
+  });
+
+  /* ---------- 删除：确认后从 ai_server 表删除 ---------- */
+  function askDelete(){
+    const names = checkedRows().map(function(tr){
+      return tr.querySelector('.lnk').textContent.replace('\u2197','').trim();
+    });
+    if (!names.length) return;
+
+    document.getElementById('delTarget').innerHTML =
+      names.map(n => '<div>· ' + n + '</div>').join('');
+    document.getElementById('delMask').classList.add('show');
+  }
+
+  function closeDelete(){
+    document.getElementById('delMask').classList.remove('show');
+  }
+
+  function confirmDelete(){
+    const targets = checkedRows();
+    const count = targets.length;
+    if (!count) return;
+
+    const ids = targets.map(function(tr){ return Number(tr.dataset.id); });
+
+    postJson(DELETE_URL, { ids: ids }).then(function (data){
+      if (!data.ok){
+        closeDelete();
+        showToast(data.error || '删除失败，请重试', 'warn');
+        return;
+      }
+
+      targets.forEach(tr => tr.remove());
+      closeDelete();
+      checkAll.checked = false;
+      checkAll.indeterminate = false;
+      refresh();
+      showToast('已删除 ' + count + ' 个服务器');
+    }).catch(function (){
+      closeDelete();
+      showToast('删除失败，请检查服务是否正常', 'warn');
+    });
+  }
+
+  document.getElementById('delMask').addEventListener('click', function(e){
+    if (e.target.id === 'delMask') closeDelete();
+  });
+
+  /* ---------- 编辑：弹窗字段与「添加服务器」一致 ---------- */
+  const URL_RE      = /^https?:\/\/[^\s]+$/i;
+  const EDIT_FIELDS = ['platform', 'baseUrl', 'company', 'home'];
+  let editingId = null;
+
+  function setEditErr(field, msg){
+    document.getElementById('eerr-' + field).textContent = msg;
+    document.getElementById('efld-' + field).classList.add('invalid');
+  }
+
+  function clearEditErr(field){
+    document.getElementById('efld-' + field).classList.remove('invalid');
+  }
+
+  function openEdit(){
+    const targets = checkedRows();
+    if (!targets.length) return;
+    if (targets.length > 1){
+      showToast('一次只能编辑一条，已打开「' + targets[0].dataset.platform + '」', 'warn');
+    }
+
+    const tr = targets[0];
+    editingId = Number(tr.dataset.id);
+
+    document.getElementById('e-platform').value = tr.dataset.platform || '';
+    document.getElementById('e-baseUrl').value  = tr.dataset.baseUrl || '';
+    document.getElementById('e-company').value  = tr.dataset.company || '';
+    document.getElementById('e-home').value     = tr.dataset.homeUrl || '';
+
+    EDIT_FIELDS.forEach(clearEditErr);
+    document.getElementById('editTarget').textContent = tr.dataset.platform || '';
+    document.getElementById('editMask').classList.add('show');
+    document.getElementById('e-platform').focus();
+  }
+
+  function closeEdit(){
+    document.getElementById('editMask').classList.remove('show');
+  }
+
+  function confirmEdit(){
+    if (editingId === null) return;
+
+    const name    = document.getElementById('e-platform').value.trim();
+    const baseUrl = document.getElementById('e-baseUrl').value.trim();
+    const company = document.getElementById('e-company').value.trim();
+    const home    = document.getElementById('e-home').value.trim();
+
+    let ok = true;
+    let firstBad = null;
+
+    if (!name){
+      setEditErr('platform', '请输入或选择平台 / 官方名');
+      ok = false; firstBad = firstBad || 'e-platform';
+    } else {
+      clearEditErr('platform');
+    }
+
+    if (!baseUrl){
+      setEditErr('baseUrl', '请输入 api 网址（base_url）');
+      ok = false; firstBad = firstBad || 'e-baseUrl';
+    } else if (!URL_RE.test(baseUrl)){
+      setEditErr('baseUrl', '格式不正确，需以 http:// 或 https:// 开头');
+      ok = false; firstBad = firstBad || 'e-baseUrl';
+    } else {
+      clearEditErr('baseUrl');
+    }
+
+    if (home && !URL_RE.test(home)){
+      setEditErr('home', '格式不正确，需以 http:// 或 https:// 开头');
+      ok = false; firstBad = firstBad || 'e-home';
+    } else {
+      clearEditErr('home');
+    }
+
+    if (!ok){
+      showToast('请检查标红的项后再保存', 'warn');
+      const el = document.getElementById(firstBad);
+      if (el) el.focus();
+      return;
+    }
+
+    postJson(UPDATE_URL, {
+      id:        editingId,
+      plat_name: name,
+      base_url:  baseUrl,
+      comp_name: company,
+      home_url:  home
+    }).then(function (data){
+      if (!data.ok){
+        showToast(data.error || '保存失败，请重试', 'warn');
+        return;
+      }
+      closeEdit();
+      showToast('已保存服务器「' + name + '」');
+      setTimeout(function(){ location.reload(); }, 900);
+    }).catch(function (){
+      showToast('保存失败，请检查服务是否正常', 'warn');
+    });
+  }
+
+  EDIT_FIELDS.forEach(function(field){
+    const el = document.getElementById('e-' + field);
+    el.addEventListener('input', function(){ clearEditErr(field); });
+    el.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); confirmEdit(); }
+    });
+  });
+
+  document.getElementById('editMask').addEventListener('click', function(e){
+    if (e.target.id === 'editMask') closeEdit();
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape'){ closeDelete(); closeEdit(); }
+  });
+
+  refresh();
+
+</script>
+{% endblock %}

@@ -1,0 +1,786 @@
+{% extends 'basic/base.html' %}
+
+{% block title %}添加模型 · Test_Prompt{% endblock %}
+
+{% block page_style %}
+<style>
+  :root{
+    --bg:#060a12;
+    --panel:rgba(13,21,36,.86);
+    --line:#1c2a44;
+    --line-soft:rgba(120,160,220,.12);
+    --text:#e6f1ff;
+    --text-dim:#9db0d4;
+    --muted:#6f83a8;
+    --cyan:#22d3ee;
+    --blue:#3b82f6;
+    --violet:#8b5cf6;
+    --danger:#ef4444;
+    --ok:#34d399;
+    --radius:14px;
+    --shadow:0 18px 48px rgba(2,8,20,.55);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    color:var(--text);
+    background:
+      radial-gradient(1100px 620px at 12% -10%, rgba(34,211,238,.16), transparent 60%),
+      radial-gradient(900px 560px at 96% 4%, rgba(139,92,246,.16), transparent 62%),
+      radial-gradient(700px 700px at 60% 120%, rgba(59,130,246,.12), transparent 60%),
+      var(--bg);
+    font-family:"Segoe UI","Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif;
+    font-size:14px;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(120,170,255,.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,170,255,.055) 1px, transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(circle at 50% 22%, #000 30%, transparent 88%);
+    mask-image:radial-gradient(circle at 50% 22%, #000 30%, transparent 88%);
+  }
+
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;}
+
+  /* ============ 布局 ============ */
+  .app{position:relative;z-index:1;display:flex;height:100vh;overflow:hidden;}
+
+  /* ============ 左侧菜单 ============ */
+  .sidebar{
+    width:252px;flex:0 0 252px;display:flex;flex-direction:column;
+    background:linear-gradient(180deg, rgba(11,18,32,.96), rgba(6,10,18,.96));
+    border-right:1px solid var(--line);
+    backdrop-filter:blur(6px);
+  }
+  .brand{
+    display:flex;align-items:center;gap:11px;
+    padding:17px 18px;border-bottom:1px solid var(--line);
+  }
+  .brand .logo{
+    width:38px;height:38px;border-radius:11px;flex:0 0 38px;
+    display:grid;place-items:center;
+    background:linear-gradient(140deg, rgba(34,211,238,.95), rgba(59,130,246,.9) 55%, rgba(139,92,246,.92));
+    box-shadow:0 0 0 1px rgba(140,220,255,.35), 0 8px 22px rgba(34,211,238,.35);
+  }
+  .brand .logo svg{width:21px;height:21px;stroke:#04121f;}
+  .brand .title{
+    font-size:17px;font-weight:700;letter-spacing:.4px;
+    background:linear-gradient(90deg,#e8f7ff,#67e8f9 60%,#a78bfa);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .brand .sub{font-size:11px;color:var(--muted);letter-spacing:1.1px;text-transform:uppercase;margin-top:2px;}
+
+  .nav{flex:1;overflow:auto;padding:12px 10px 22px;}
+  .nav::-webkit-scrollbar{width:8px;}
+  .nav::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:8px;}
+
+  .nav-label{
+    font-size:11px;letter-spacing:1.6px;color:var(--muted);
+    text-transform:uppercase;padding:10px 12px 8px;
+  }
+
+  .m1{margin-bottom:4px;}
+  .m1 > .m1-head,
+  .m2 > .m2-head{
+    display:flex;align-items:center;gap:10px;width:100%;
+    background:transparent;border:0;color:var(--text-dim);
+    padding:10px 12px;border-radius:10px;cursor:pointer;
+    font-size:13.5px;text-align:left;transition:.18s;
+  }
+  .m1 > .m1-head:hover,
+  .m2 > .m2-head:hover{background:rgba(120,170,255,.07);color:#dceaff;}
+  .m1 > .m1-head .ico{width:16px;height:16px;opacity:.85;}
+  .m2 > .m2-head .ico{width:14px;height:14px;opacity:.7;}
+  .m1 > .m1-head .txt,.m2 > .m2-head .txt{flex:1;}
+  .chev{width:14px;height:14px;transition:transform .2s;}
+  .open > .m1-head .chev,.open > .m2-head .chev{transform:rotate(90deg);}
+
+  .m2-wrap,.m3-wrap{display:none;}
+  .open > .m2-wrap{display:block;}
+  .m2.open > .m3-wrap{display:block;}
+
+  .m2{margin:2px 0 2px 6px;}
+  .m2 > .m2-head{padding:9px 12px;font-size:13px;}
+
+  .m3{margin:1px 0 1px 10px;border-left:1px solid var(--line);padding-left:6px;}
+  .m3 a{
+    display:flex;align-items:center;gap:9px;
+    padding:8px 12px;border-radius:9px;color:var(--muted);font-size:12.5px;
+    transition:.18s;position:relative;
+  }
+  .m3 a .dot{width:5px;height:5px;border-radius:50%;background:#2b3d5c;transition:.18s;}
+  .m3 a:hover{color:#dceaff;background:rgba(120,170,255,.07);}
+  .m3 a:hover .dot{background:#5f7ea8;}
+  .m3 a.active{
+    color:#eafcff;background:linear-gradient(90deg, rgba(34,211,238,.16), rgba(34,211,238,.02));
+    box-shadow:inset 0 0 0 1px rgba(34,211,238,.28);
+  }
+  .m3 a.active .dot{background:var(--cyan);box-shadow:0 0 9px var(--cyan);}
+  .m3 a.active::before{
+    content:"";position:absolute;left:-7px;top:50%;transform:translateY(-50%);
+    width:2px;height:16px;background:var(--cyan);border-radius:2px;box-shadow:0 0 10px var(--cyan);
+  }
+  /* ============ 右侧主区 ============ */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+
+  .topbar{
+    height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(13,21,36,.75), rgba(13,21,36,.25));
+    backdrop-filter:blur(8px);
+  }
+  .crumbs{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+  .crumbs .sep{opacity:.45;}
+  .crumbs .cur{color:#e8f7ff;font-weight:600;}
+  .crumbs a:hover{color:#dceaff;}
+  .topbar .right{display:flex;align-items:center;gap:14px;}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#b8e9f5;
+    padding:6px 12px;border-radius:999px;background:rgba(34,211,238,.08);
+    border:1px solid rgba(34,211,238,.28);
+  }
+  .pulse{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .avatar{
+    width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;
+    color:#04121f;background:linear-gradient(135deg,#67e8f9,#818cf8);
+  }
+
+  .content{flex:1;overflow:auto;padding:20px 22px 26px;}
+  .content::-webkit-scrollbar{width:10px;}
+  .content::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:10px;}
+
+  .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:16px;}
+  .hero h1{margin:0;font-size:20px;letter-spacing:.5px;}
+  .hero h1 span{
+    background:linear-gradient(90deg,#eafcff,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero p{margin:7px 0 0;font-size:12.5px;color:var(--muted);}
+  .hero .glow-line{
+    height:2px;width:120px;margin-top:12px;border-radius:2px;
+    background:linear-gradient(90deg,var(--cyan),rgba(139,92,246,0));
+    box-shadow:0 0 14px rgba(34,211,238,.7);
+  }
+
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);overflow:hidden;
+  }
+  .panel::before{
+    content:"";display:block;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(34,211,238,.55),rgba(139,92,246,.45),transparent);
+  }
+
+  /* 表单 */
+  .panel-head{
+    display:flex;align-items:center;gap:10px;padding:14px 18px;
+    border-bottom:1px solid var(--line-soft);font-size:13.5px;font-weight:600;color:#dceaff;
+    background:linear-gradient(180deg, rgba(255,255,255,.02), transparent);
+  }
+  .panel-head .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);}
+  .panel-head small{margin-left:auto;font-weight:400;font-size:12px;color:var(--muted);}
+
+  .form-layout{display:grid;grid-template-columns:minmax(0,1fr) 326px;align-items:stretch;}
+  .form-body{padding:22px 18px 2px;min-width:0;}
+  .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;}
+  .form-grid .span-2{grid-column:1 / -1;}
+  .form-grid .input{width:100%;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field > label{font-size:12px;color:var(--muted);letter-spacing:.3px;}
+  .req{color:#f87171;font-style:normal;margin-left:3px;}
+  .input{
+    height:38px;padding:0 13px;border-radius:9px;
+    background:#0a1322;border:1px solid #21354f;color:var(--text);font-size:13px;
+    transition:.18s;outline:none;
+  }
+  .input::placeholder{color:#4d6187;}
+  .input:focus{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.13);background:#0b1626;}
+  .input.mono{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:12.5px;}
+  .input.num{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:13px;letter-spacing:.3px;}
+  .field .hint{margin-top:7px;font-size:11.5px;color:var(--muted);line-height:1.55;}
+  .field .err{display:none;margin-top:7px;font-size:11.5px;color:#fca5a5;}
+  .field.invalid .err{display:block;}
+  .field.invalid .hint{display:none;}
+  .field.invalid > .input,
+  .field.invalid .select-wrap .select,
+  .field.invalid .ms .ms-box{border-color:rgba(239,68,68,.7);box-shadow:0 0 0 3px rgba(239,68,68,.12);}
+
+  /* 原生下拉框 */
+  .select-wrap{position:relative;}
+  .select{
+    width:100%;height:38px;padding:0 40px 0 13px;border-radius:9px;cursor:pointer;
+    background:#0a1322;border:1px solid #21354f;color:var(--text);font-size:13px;
+    outline:none;transition:.18s;
+    -webkit-appearance:none;-moz-appearance:none;appearance:none;
+  }
+  .select:focus{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.13);background:#0b1626;}
+  .select.ph{color:#4d6187;}
+  .select option{background:#0b1424;color:#e6f1ff;}
+  .select-wrap::after{
+    content:"";position:absolute;right:15px;top:50%;width:7px;height:7px;pointer-events:none;
+    border-right:2px solid #7d94bb;border-bottom:2px solid #7d94bb;
+    transform:translateY(-70%) rotate(45deg);
+  }
+  /* 类型徽标（列表 / 预览共用） */
+  .type{
+    display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 10px;border-radius:999px;
+    border:1px solid #2a3d5c;background:rgba(120,160,220,.07);color:#a9bfe2;white-space:nowrap;
+  }
+  .type::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;}
+  .type[data-type="对话"]{color:#7dd3fc;border-color:rgba(125,211,252,.35);background:rgba(125,211,252,.09);}
+  .type[data-type="视频"]{color:#f9a8d4;border-color:rgba(249,168,212,.35);background:rgba(249,168,212,.09);}
+  .type[data-type="嵌入"]{color:#6ee7b7;border-color:rgba(110,231,183,.35);background:rgba(110,231,183,.09);}
+  .type[data-type="生图"]{color:#fdba74;border-color:rgba(253,186,116,.35);background:rgba(253,186,116,.09);}
+  .type[data-type="语音"]{color:#a5b4fc;border-color:rgba(165,180,252,.35);background:rgba(165,180,252,.09);}
+  .type[data-type="重排"]{color:#fcd34d;border-color:rgba(252,211,77,.35);background:rgba(252,211,77,.09);}
+
+  /* 多选下拉框（类型） */
+  .ms{position:relative;}
+  .ms-box{
+    display:flex;align-items:center;flex-wrap:wrap;gap:6px;
+    min-height:38px;padding:6px 40px 6px 10px;border-radius:9px;
+    background:#0a1322;border:1px solid #21354f;cursor:pointer;transition:.18s;
+  }
+  .ms.open .ms-box{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.13);background:#0b1626;}
+  .ms-ph{font-size:13px;color:#4d6187;padding-left:3px;}
+  .ms-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip-type{
+    display:inline-flex;align-items:center;gap:7px;font-size:12px;padding:2px 7px 2px 10px;border-radius:999px;
+    border:1px solid #2a3d5c;background:rgba(120,160,220,.07);color:#a9bfe2;
+  }
+  .chip-type[data-type="对话"]{color:#7dd3fc;border-color:rgba(125,211,252,.35);background:rgba(125,211,252,.09);}
+  .chip-type[data-type="视频"]{color:#f9a8d4;border-color:rgba(249,168,212,.35);background:rgba(249,168,212,.09);}
+  .chip-type[data-type="嵌入"]{color:#6ee7b7;border-color:rgba(110,231,183,.35);background:rgba(110,231,183,.09);}
+  .chip-type[data-type="生图"]{color:#fdba74;border-color:rgba(253,186,116,.35);background:rgba(253,186,116,.09);}
+  .chip-type[data-type="语音"]{color:#a5b4fc;border-color:rgba(165,180,252,.35);background:rgba(165,180,252,.09);}
+  .chip-type[data-type="重排"]{color:#fcd34d;border-color:rgba(252,211,77,.35);background:rgba(252,211,77,.09);}
+  .chip-type i{font-style:normal;cursor:pointer;opacity:.55;font-size:13px;line-height:1;transition:.14s;}
+  .chip-type i:hover{opacity:1;}
+  .ms-btn{
+    position:absolute;right:6px;top:50%;transform:translateY(-50%);
+    width:28px;height:28px;border:0;border-radius:8px;background:transparent;
+    color:#7d94bb;cursor:pointer;display:grid;place-items:center;transition:.16s;
+  }
+  .ms-btn:hover{color:#eafcff;background:rgba(34,211,238,.09);}
+  .ms-btn svg{width:14px;height:14px;transition:transform .2s;}
+  .ms.open .ms-btn svg{transform:rotate(180deg);}
+  .ms-list{
+    position:absolute;z-index:20;left:0;right:0;top:calc(100% + 6px);
+    padding:6px;display:none;max-height:236px;overflow:auto;
+    background:linear-gradient(180deg,#0e1a2c,#0b1424);
+    border:1px solid #22385a;border-radius:10px;
+    box-shadow:0 22px 50px rgba(0,0,0,.62), 0 0 0 1px rgba(34,211,238,.06) inset;
+    animation:pop .14s ease-out;
+  }
+  .ms.open .ms-list{display:block;}
+  .ms-list::-webkit-scrollbar{width:8px;}
+  .ms-list::-webkit-scrollbar-thumb{background:#1d2c46;border-radius:8px;}
+  .ms-item{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
+    font-size:13px;color:var(--text-dim);cursor:pointer;transition:.14s;
+  }
+  .ms-item:hover,.ms-item.on{background:rgba(34,211,238,.1);}
+  .ms-item input{width:15px;height:15px;accent-color:#22d3ee;cursor:pointer;margin:0;}
+  .ms-foot{
+    display:flex;align-items:center;gap:8px;margin-top:5px;padding:9px 8px 3px;
+    border-top:1px solid var(--line-soft);
+  }
+  .ms-mini{
+    height:26px;padding:0 11px;border-radius:7px;font-size:11.5px;cursor:pointer;transition:.16s;
+    background:#101c2e;border:1px solid #23385a;color:#bcd2f2;
+  }
+  .ms-mini:hover{border-color:rgba(34,211,238,.6);color:#eafcff;}
+  .ms-mini.sel{margin-left:auto;}
+
+  .form-foot{
+    display:flex;align-items:center;gap:10px;padding:18px;
+    border-top:1px solid var(--line-soft);
+  }
+  .form-foot .tip{margin-left:auto;font-size:12px;color:var(--muted);}
+
+  .btn{
+    height:38px;padding:0 16px;border-radius:9px;font-size:13px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;justify-content:center;
+    border:1px solid transparent;transition:.18s;white-space:nowrap;
+  }
+  .btn svg{width:15px;height:15px;flex:0 0 15px;}
+  .btn-primary{
+    background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#03131f;font-weight:700;
+    box-shadow:0 8px 22px rgba(34,211,238,.28);
+  }
+  .btn-primary:hover{filter:brightness(1.08);box-shadow:0 10px 26px rgba(34,211,238,.4);}
+  .btn-ghost{background:#101c2e;border-color:#23385a;color:#cfe2ff;}
+  .btn-ghost:hover{border-color:rgba(34,211,238,.6);color:#eafcff;background:#122238;}
+
+  /* 右侧预览 */
+  .side{
+    padding:20px 18px;border-left:1px solid var(--line);
+    background:rgba(255,255,255,.012);
+  }
+  .side h4{
+    margin:0 0 12px;font-size:13px;color:#cfe2ff;letter-spacing:.4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .side h4 svg{width:15px;height:15px;color:var(--cyan);flex:0 0 15px;}
+  .preview{border:1px solid var(--line);border-radius:12px;padding:14px;background:rgba(10,19,34,.6);}
+  .preview .pv-name{font-size:14px;font-weight:700;color:#eafcff;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .preview .pv-name .mono{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:13px;}
+  .preview .pv-line{font-size:12.5px;color:var(--text-dim);margin-top:9px;word-break:break-all;}
+  .preview .pv-line .k{color:var(--muted);margin-right:6px;}
+  .preview .pv-line.mono{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;font-size:12px;color:#9fb6dc;}
+  .preview .pv-types{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;}
+  .preview .pv-cost{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;font-size:12.5px;color:var(--text-dim);}
+  .preview .pv-cost b{font-family:"JetBrains Mono","Cascadia Mono",Consolas,monospace;color:#a7f3d0;font-weight:600;}
+  .ph{color:#4d6187;font-style:italic;}
+  .tips{margin-top:16px;font-size:12px;line-height:1.85;color:var(--muted);}
+  .tips b{color:#a9bfe2;font-weight:600;}
+  .tips div{padding-left:14px;position:relative;}
+  .tips div::before{content:"";position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:50%;background:#2b3d5c;}
+
+  /* ============ Toast ============ */
+  .toast{
+    position:fixed;right:24px;bottom:24px;z-index:60;
+    display:flex;align-items:center;gap:10px;
+    padding:12px 16px;border-radius:11px;font-size:13px;color:#d9fbff;
+    background:linear-gradient(180deg,rgba(13,28,44,.97),rgba(9,18,32,.97));
+    border:1px solid rgba(34,211,238,.4);box-shadow:0 16px 40px rgba(0,0,0,.5);
+    opacity:0;transform:translateY(14px);pointer-events:none;transition:.25s;
+  }
+  .toast.show{opacity:1;transform:none;}
+  .toast svg{width:16px;height:16px;color:var(--ok);}
+
+  @media (max-width:1120px){
+    .form-layout{grid-template-columns:minmax(0,1fr);}
+    .side{border-left:0;border-top:1px solid var(--line);}
+  }
+  @media (max-width:760px){
+    .sidebar{width:210px;flex-basis:210px;}
+    .form-grid{grid-template-columns:minmax(0,1fr);}
+  }
+</style>
+{% endblock %}
+
+{% block crumb %}
+        <a href="{% url 'basic:server_list' %}">基础信息</a><span class="sep">/</span>
+        <span>模型</span><span class="sep">/</span>
+        <span class="cur">添加模型</span>
+{% endblock %}
+
+{% block content %}
+    <div class="content">
+      <div class="hero">
+        <div>
+          <h1><span>添加模型</span></h1>
+          <p>登记模型的所属服务器、能力类型与输入 / 输出 token 计费标准，保存后即可在提示词调试中选择该模型并估算成本。</p>
+          <div class="glow-line"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="dot"></span>模型信息
+        </div>
+
+        <div class="form-layout">
+          <form class="form-body" id="modelForm" onsubmit="return false;" novalidate>
+            <div class="form-grid">
+              <!-- 服务器：下拉列表框 -->
+              <div class="field" id="fld-server">
+                <label for="server">服务器<i class="req">*</i></label>
+                <div class="select-wrap">
+                  <select class="select ph" id="server">
+                    <option value="">请选择服务器</option>
+                    {% for srv in servers %}<option value="{{ srv.plat_name }}">{{ srv.plat_name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="err" id="err-server"></div>
+              </div>
+
+              <!-- 模型名：文本框 -->
+              <div class="field" id="fld-name">
+                <label for="name">模型名<i class="req">*</i></label>
+                <input class="input mono" id="name" type="text" placeholder="如：gpt-4o、deepseek-chat" autocomplete="off" />
+
+                <div class="err" id="err-name"></div>
+              </div>
+
+              <!-- 类型：下拉列表框，可多选 -->
+              <div class="field span-2" id="fld-types">
+                <label for="msBox">类型<i class="req">*</i></label>
+                <div class="ms" id="ms-type">
+                  <div class="ms-box" id="msBox" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="ms-ph" id="msPh">请选择类型（可多选）</span>
+                    <span class="ms-chips" id="msChips"></span>
+                  </div>
+                  <button class="ms-btn" id="msBtn" type="button" tabindex="-1" aria-label="展开类型列表">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                  </button>
+                  <div class="ms-list" id="msList" role="listbox" aria-multiselectable="true"></div>
+                </div>
+                <div class="hint">可多选，同一个模型可同时具备多种能力；已选中的标签可点 × 移除</div>
+                <div class="err" id="err-types"></div>
+              </div>
+
+              <!-- 输入 token 计费：仅数字与小数点 -->
+              <div class="field" id="fld-inCost">
+                <label for="inCost">输入 token 计费<i class="req">*</i></label>
+                <input class="input num" id="inCost" type="text" inputmode="decimal" placeholder="如：2.5" autocomplete="off" />
+                <div class="hint">只能输入数字和小数点，如 2.5</div>
+                <div class="err" id="err-inCost"></div>
+              </div>
+
+              <!-- 输出 token 计费：仅数字与小数点 -->
+              <div class="field" id="fld-outCost">
+                <label for="outCost">输出 token 计费</label>
+                <input class="input num" id="outCost" type="text" inputmode="decimal" placeholder="如：10" autocomplete="off" />
+                <div class="hint">只能输入数字和小数点；嵌入 / 重排类模型可留空</div>
+                <div class="err" id="err-outCost"></div>
+              </div>
+
+              <!-- 单位：下拉列表框 -->
+              <div class="field" id="fld-unit">
+                <label for="unit">单位<i class="req">*</i></label>
+                <div class="select-wrap">
+                  <select class="select" id="unit">
+                    <option value="K">K</option>
+                    <option value="万">万</option>
+                    <option value="十万">十万</option>
+                    <option value="百万" selected>百万</option>
+                  </select>
+                </div>
+                <div class="err" id="err-unit"></div>
+              </div>
+
+              <!-- 网址：文本框 -->
+              <div class="field" id="fld-url">
+                <label for="url">网址</label>
+                <input class="input mono" id="url" type="text" placeholder="https://platform.openai.com/docs/models" autocomplete="off" />
+                <div class="err" id="err-url"></div>
+              </div>
+            </div>
+
+            <div class="form-foot">
+              <button class="btn btn-primary" type="button" onclick="save()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                保存
+              </button>
+              <button class="btn btn-ghost" type="button" onclick="cancel()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                取消
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    </div>
+{% endblock %}
+{% block page_script %}
+<script>
+  const LIST_URL = "{% url 'basic:model_list' %}";
+  const SAVE_URL = "{% url 'basic:model_add' %}";
+
+  /* ---------- 菜单展开 / 收起 ---------- */
+  function toggleMenu(id){
+    document.getElementById(id).classList.toggle('open');
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  /* ---------- 类型：可多选的下拉列表框 ---------- */
+  const TYPE_OPTIONS = ['对话', '视频', '嵌入', '生图', '语音', '重排'];
+
+  const msRoot  = document.getElementById('ms-type');
+  const msBox   = document.getElementById('msBox');
+  const msBtn   = document.getElementById('msBtn');
+  const msList  = document.getElementById('msList');
+  const msPh    = document.getElementById('msPh');
+  const msChips = document.getElementById('msChips');
+
+  msList.innerHTML = TYPE_OPTIONS.map(function(t){
+    return '<label class="ms-item">' +
+             '<input type="checkbox" value="' + t + '" />' +
+             '<span class="type" data-type="' + t + '">' + t + '</span>' +
+           '</label>';
+  }).join('') +
+  '<div class="ms-foot">' +
+    '<button class="ms-mini" type="button" onclick="toggleAllTypes(true)">全选</button>' +
+    '<button class="ms-mini" type="button" onclick="toggleAllTypes(false)">清空</button>' +
+    '<button class="ms-mini sel" type="button" onclick="closeMs()">完成</button>' +
+  '</div>';
+
+  const typeChecks = Array.prototype.slice.call(msList.querySelectorAll('input[type="checkbox"]'));
+
+  function selectedTypes(){
+    return typeChecks.filter(function(c){ return c.checked; }).map(function(c){ return c.value; });
+  }
+
+  function renderChips(){
+    const picked = selectedTypes();
+    msPh.style.display = picked.length ? 'none' : '';
+    msChips.innerHTML = picked.map(function(t){
+      return '<span class="chip-type" data-type="' + t + '">' + t +
+               '<i data-remove="' + t + '" title="移除">×</i></span>';
+    }).join('');
+  }
+
+  function openMs(){
+    msRoot.classList.add('open');
+    msBox.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeMs(){
+    msRoot.classList.remove('open');
+    msBox.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleAllTypes(on){
+    typeChecks.forEach(function(c){ c.checked = on; });
+    renderChips();
+    clearErr('types');
+    syncPreview();
+  }
+
+  msBox.addEventListener('click', function(e){
+    if (e.target.closest('[data-remove]')) return;
+    if (msRoot.classList.contains('open')) closeMs(); else openMs();
+  });
+
+  msBox.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      if (msRoot.classList.contains('open')) closeMs(); else openMs();
+    } else if (e.key === 'Escape'){
+      closeMs();
+    }
+  });
+
+  msBtn.addEventListener('click', function(){
+    if (msRoot.classList.contains('open')) closeMs(); else openMs();
+  });
+
+  msChips.addEventListener('click', function(e){
+    const icon = e.target.closest('[data-remove]');
+    if (!icon) return;
+    const t = icon.getAttribute('data-remove');
+    typeChecks.forEach(function(c){ if (c.value === t) c.checked = false; });
+    renderChips();
+    syncPreview();
+  });
+
+  msList.addEventListener('change', function(){
+    renderChips();
+    clearErr('types');
+    syncPreview();
+  });
+
+  document.addEventListener('click', function(e){
+    if (!msRoot.contains(e.target)) closeMs();
+  });
+
+  /* ---------- 金额输入：只保留数字与小数点 ---------- */
+  function sanitizeAmount(value){
+    let s = String(value).replace(/[^\d.]/g, '');
+    const i = s.indexOf('.');
+    if (i > -1) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '');
+    const m = s.match(/^\d*\.?\d{0,4}/);
+    return m ? m[0] : '';
+  }
+  /* ---------- 字段校验 ---------- */
+  function setErr(field, msg){
+    document.getElementById('err-' + field).textContent = msg;
+    document.getElementById('fld-' + field).classList.add('invalid');
+  }
+
+  function clearErr(field){
+    document.getElementById('fld-' + field).classList.remove('invalid');
+  }
+
+  /* ---------- 右侧预览 ---------- */
+  function setText(id, value, placeholder){
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (value){
+      el.textContent = value;
+      el.classList.remove('ph');
+    } else {
+      el.textContent = placeholder;
+      el.classList.add('ph');
+    }
+  }
+
+  const serverSel = document.getElementById('server');
+  const unitSel   = document.getElementById('unit');
+
+  function syncPreview(){
+    const name    = document.getElementById('name').value.trim();
+    const inCost  = document.getElementById('inCost').value.trim();
+    const outCost = document.getElementById('outCost').value.trim();
+    const url     = document.getElementById('url').value.trim();
+    const unit    = unitSel.value;
+    const picked  = selectedTypes();
+
+    const pvName = document.getElementById('pvName');
+    if (pvName){
+      pvName.innerHTML = name
+        ? '<span class="mono">' + escapeHtml(name) + '</span>'
+        : '<span class="ph">（未填写模型名）</span>';
+    }
+
+    setText('pvServer', serverSel.value, '（未选择）');
+    setText('pvUrl', url, '（未填写）');
+
+    const pvTypes = document.getElementById('pvTypes');
+    if (pvTypes){
+      pvTypes.innerHTML = picked.length
+        ? picked.map(function(t){ return '<span class="type" data-type="' + t + '">' + t + '</span>'; }).join('')
+        : '<span class="ph">（未选择类型）</span>';
+    }
+
+    const pvIn  = document.getElementById('pvIn');
+    const pvOut = document.getElementById('pvOut');
+    if (pvIn)  pvIn.textContent  = inCost  ? '¥ ' + inCost  + ' / ' + unit + ' tokens' : '—';
+    if (pvOut) pvOut.textContent = outCost ? '¥ ' + outCost + ' / ' + unit + ' tokens' : '—';
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  ['name', 'url'].forEach(function(id){
+    const el = document.getElementById(id);
+    el.addEventListener('input', function(){ clearErr(id); syncPreview(); });
+    el.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); save(); }
+    });
+  });
+
+  ['inCost', 'outCost'].forEach(function(id){
+    const el = document.getElementById(id);
+    el.addEventListener('input', function(){
+      const cleaned = sanitizeAmount(el.value);
+      if (cleaned !== el.value) el.value = cleaned;
+      clearErr(id);
+      syncPreview();
+    });
+    el.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); save(); }
+    });
+  });
+
+  serverSel.addEventListener('change', function(){
+    serverSel.classList.toggle('ph', !serverSel.value);
+    clearErr('server');
+    syncPreview();
+  });
+
+  unitSel.addEventListener('change', function(){
+    clearErr('unit');
+    syncPreview();
+  });
+
+  /* ---------- 保存 / 取消 ---------- */
+  const URL_RE    = /^https?:\/\/[^\s]+$/i;
+  const AMOUNT_RE = /^\d+(\.\d+)?$/;
+
+  function save(){
+    const server  = serverSel.value;
+    const name    = document.getElementById('name').value.trim();
+    const inCost  = document.getElementById('inCost').value.trim();
+    const outCost = document.getElementById('outCost').value.trim();
+    const url     = document.getElementById('url').value.trim();
+    const picked  = selectedTypes();
+
+    let ok = true;
+
+    if (!server){ setErr('server', '请选择模型所属服务器'); ok = false; }
+    else { clearErr('server'); }
+
+    if (!name){ setErr('name', '请输入模型名'); ok = false; }
+    else { clearErr('name'); }
+
+    if (!picked.length){ setErr('types', '请至少选择一种类型'); ok = false; }
+    else { clearErr('types'); }
+
+    if (!inCost){
+      setErr('inCost', '请输入输入 token 计费'); ok = false;
+    } else if (!AMOUNT_RE.test(inCost)){
+      setErr('inCost', '只能输入数字和小数点，如 2.5'); ok = false;
+    } else { clearErr('inCost'); }
+
+    if (outCost && !AMOUNT_RE.test(outCost)){
+      setErr('outCost', '只能输入数字和小数点，如 10'); ok = false;
+    } else { clearErr('outCost'); }
+
+    if (url && !URL_RE.test(url)){
+      setErr('url', '格式不正确，需以 http:// 或 https:// 开头'); ok = false;
+    } else { clearErr('url'); }
+
+    if (!ok){
+      showToast('请检查标红的项后再保存', 'warn');
+      const bad = document.querySelector('.field.invalid .input, .field.invalid .select, .field.invalid .ms-box');
+      if (bad) bad.focus();
+      return;
+    }
+
+    closeMs();
+
+    postJson(SAVE_URL, {
+      srv_name:   server,
+      model_name: name,
+      model_type: picked.join(','),
+      in_price:   inCost,
+      out_price:  outCost,
+      bill_unit:  unitSel.value,
+      doc_url:    url
+    }).then(function (data){
+      if (!data.ok){
+        showToast(data.error || '保存失败，请重试', 'warn');
+        return;
+      }
+      showToast('已保存模型「' + name + '」');
+      setTimeout(function(){ location.href = LIST_URL; }, 900);
+    }).catch(function (){
+      showToast('保存失败，请检查服务是否正常', 'warn');
+    });
+  }
+
+  function cancel(){
+    location.href = LIST_URL;
+  }
+
+  /* ---------- 轻提示 ---------- */
+  const TOAST_ICONS = {
+    ok:   '<path d="M20 6L9 17l-5-5"/>',
+    warn: '<path d="M12 4l9 16H3l9-16z"/><path d="M12 10v4M12 17.5h.01"/>'
+  };
+
+  let toastTimer = null;
+  function showToast(text, variant){
+    const t    = document.getElementById('toast');
+    const icon = document.getElementById('toastIcon');
+    const isWarn = variant === 'warn';
+
+    document.getElementById('toastText').textContent = text;
+    icon.innerHTML = isWarn ? TOAST_ICONS.warn : TOAST_ICONS.ok;
+    icon.style.color = isWarn ? '#fca5a5' : '';
+    t.style.borderColor = isWarn ? 'rgba(239,68,68,.45)' : '';
+
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  }
+
+  renderChips();
+  syncPreview();
+</script>
+{% endblock %}
